@@ -1,7 +1,7 @@
 # Data
-inputs/
-outputs/
-logs/
+inputs
+outputs
+logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
