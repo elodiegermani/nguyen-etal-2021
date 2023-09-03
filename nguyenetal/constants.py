@@ -11,6 +11,7 @@ FILENAME_UPDRS1A = "MDS-UPDRS_Part_I.csv"
 FILENAME_UPDRS1B = "MDS-UPDRS_Part_I_Patient_Questionnaire.csv"  # patient questionnaire
 FILENAME_UPDRS2 = "MDS_UPDRS_Part_II__Patient_Questionnaire.csv"
 FILENAME_UPDRS3 = "MDS-UPDRS_Part_III.csv"
+FILENAME_UPDRS3_CLEAN = "MDS_UPDRS_Part_III_clean.csv"
 FILENAME_UPDRS4 = "MDS-UPDRS_Part_IV__Motor_Complications.csv"
 FILENAME_GDS = "Geriatric_Depression_Scale__Short_Version_.csv"
 

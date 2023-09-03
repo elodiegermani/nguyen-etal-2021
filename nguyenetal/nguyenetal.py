@@ -2,13 +2,19 @@
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
+import datetime as dt
 
 import livingpark_utils
+from livingpark_utils.scripts import pd_status
+from livingpark_utils.dataset.ppmi import disease_duration
+
 from .constants import (
     FILENAME_PARTICIPANT_STATUS,
     FILENAME_DEMOGRAPHICS,
     FILENAME_PD_HISTORY,
     FILENAME_AGE,
+    FILENAME_SOCIO,
     FILENAME_MOCA,
     FILENAME_UPDRS1A,
     FILENAME_UPDRS1B,
@@ -170,7 +176,7 @@ def load_ppmi_csv(
         #if len(missing_keys) != 0:
         #    raise RuntimeError(f"Missing keys in conversion map: {missing_keys}")
         df_ppmi[COL_VISIT_TYPE] = df_ppmi[COL_VISIT_TYPE].map(IDA_VISIT_MAP)
-        df_ppmi[COL_STATUS] = df_ppmi[COL_STATUS].map(IDA_STATUS_MAP)
+        #df_ppmi[COL_STATUS] = df_ppmi[COL_STATUS].map(IDA_STATUS_MAP)
 
     # convert subject IDs to integers
     # IDs should be all integers to be consistent
@@ -332,13 +338,13 @@ def get_fMRI_cohort(
     df_fMRI_subset = df_fMRI
     df_fMRI_subset = df_fMRI_subset.dropna(axis="index", subset=[COL_PAT_ID])
     # only keep PD patients
-    df_fMRI_subset = df_fMRI_subset.merge(df_status, on=[COL_PAT_ID, COL_STATUS])
+    df_fMRI_subset = df_fMRI_subset.merge(df_status, on=[COL_PAT_ID])
 
     df_fMRI_subset = df_fMRI_subset.loc[
         (df_fMRI_subset[COL_STATUS].isin([status_groups])) & \
         (df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(MANUFACTURER)) & \
         (df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(FIELD_STRENGTH)) & \
-        (df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(TR_VAL)) & \
+        #(df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(TR_VAL)) & \
         (df_fMRI_subset[COL_IMAGE_DESC].isin(IMAGE_DESC))]
 
     #df_fMRI_subset = df_fMRI_subset.loc[
@@ -349,3 +355,224 @@ def get_fMRI_cohort(
         print(f"WARNING: Duplicate subjects in cohort")
 
     return df_fMRI_subset
+
+def to_1_decimal_str(f):
+    return str(round(f, 1))
+
+def compute_summary_features(df, utils, timepoint='baseline', df_baseline=None,
+    index = {"RAWHITE":"% Caucasian",
+        "RABLACK":"% African-American",
+        "RAASIAN":"% Asian",
+        'HISPLAT':"% Hispanic",
+        'SEX': "% Male",
+        'HANDED': '% right-handed',
+        'AGE_AT_VISIT': "Mean age, years",
+        'EDUCYRS': 'Mean years of education',
+        'PDXDUR':"Mean disease duration at baseline, days",
+        'UPDRS_TOT_BASELINE' : "Mean MDS-UPDRS at baseline",
+        'UPDRS_TOT_TIMEPOINT': 'Mean MDS-UPDRS at timepoint',
+        'MCATOT': "Mean MoCA at baseline",
+        'GDS_TOTAL': "Mean GDS at Baseline",
+        'NHY': "Mean Hoehn-Yahr stage"}):
+    
+    # Load necessary study files
+    df_pd_history = load_ppmi_csv(utils, FILENAME_PD_HISTORY)
+    df_demographics = load_ppmi_csv(utils, FILENAME_DEMOGRAPHICS)
+    df_socio = load_ppmi_csv(utils, FILENAME_SOCIO)
+    df_age = load_ppmi_csv(utils, FILENAME_AGE)
+    df_disease_duration = disease_duration(utils.study_files_dir)
+    
+    # Necessary columns for demographic file
+    cols_demo = ['PATNO', 'SEX', 'RAWHITE', 'HISPLAT', 'RABLACK', 'RAASIAN', 'HANDED']
+    
+    df_summary = df.merge(
+        df_demographics[cols_demo],
+        on=[COL_PAT_ID],
+    )
+    
+    # Necessary columns for PD file
+    cols_PD = ['PATNO','PDDXDT']
+    
+    df_summary = df_summary.merge(
+        df_pd_history[cols_PD],
+        on=[COL_PAT_ID],
+    )
+    
+    # Necessary columns for social file 
+    cols_socio = ['PATNO','EDUCYRS']
+    
+    df_summary = df_summary.merge(
+        df_socio[cols_socio].drop_duplicates(subset=[COL_PAT_ID]),
+        on=[COL_PAT_ID],
+    )
+
+    # Necessary columns for age file
+    df_summary = df_summary.merge(df_age, on=[COL_PAT_ID, COL_VISIT_TYPE])
+    df_summary = df_summary.drop_duplicates(subset=[COL_PAT_ID])
+    
+    # Conversion to binaries
+    df_summary['HANDED'] = [1 if h==1 else 0 for h in df_summary['HANDED'].tolist()]
+
+    # Baseline vs prediction timepoints
+    if timepoint == 'baseline':
+        df_summary['UPDRS_TOT_TIMEPOINT'] = df_summary['UPDRS_TOT']
+        df_summary['UPDRS_TOT_BASELINE'] = df_summary['UPDRS_TOT']
+
+        # Conversion of dates & binaries
+        df_summary = df_summary.merge(df_disease_duration.drop_duplicates(subset=[COL_PAT_ID, COL_VISIT_TYPE]), 
+                                      on = ['PATNO', 'EVENT_ID'])
+        df_summary['PDXDUR'] = df_summary['PDXDUR'] / 12 * 366 
+
+    else:
+        df_summary['UPDRS_TOT_BASELINE'] = df_baseline[
+        "UPDRS_TOT"][df_baseline[COL_PAT_ID].isin(
+        df_summary[COL_PAT_ID].tolist())].tolist()
+        df_summary['UPDRS_TOT_TIMEPOINT'] = df_summary['UPDRS_TOT']
+
+        # Conversion of dates & binaries
+        df_baseline = df_baseline.merge(df_disease_duration.drop_duplicates(subset=[COL_PAT_ID, COL_VISIT_TYPE]), 
+                                      on = ['PATNO', 'EVENT_ID'])
+        df_baseline['PDXDUR'] = df_baseline['PDXDUR'] / 12 * 366 
+
+        df_summary['PDXDUR'] = df_baseline["PDXDUR"][df_baseline[COL_PAT_ID].isin(
+        df_summary[COL_PAT_ID].tolist())].tolist()        
+    
+    # Drop unused columns    
+    df_summary = df_summary[list(index.keys())]
+    
+    for keys in list(index.keys())[:6]:
+        df_summary[keys] = df_summary[keys] * 100 
+    
+    df_summary_means = df_summary.mean().tolist()
+    df_summary_stds = df_summary.std().tolist()
+    
+    df_summary_means = [to_1_decimal_str(mean) for mean in df_summary_means] 
+    df_summary_stds = [" ± " + to_1_decimal_str(std) if i > 5 else '' for i, std in enumerate(df_summary_stds)] 
+    df_summary_values = pd.DataFrame([df_summary_means, df_summary_stds], columns = df_summary.columns)
+    df_summary_values = (df_summary_values.iloc[0] + df_summary_values.iloc[1]).T
+    
+    df_summary_values = df_summary_values.rename(index=index)
+    
+    if timepoint=='baseline':
+        df_summary_values.loc['Mean MDS-UPDRS at timepoint'] = '-'
+
+    return df_summary_values
+
+# How to deal with NaNs ? 
+def impute_mean(df, col_name, is_int=False):
+    '''
+    Replace NaNs with mean.
+    '''
+    mean_value = df[col_name].mean()
+    if is_int:
+        mean_value = int(mean_value)
+    df[col_name].fillna(value=mean_value, inplace=True)
+    
+    return df
+
+def impute_zeros(df, col_name):
+    '''
+    Replace NaNs with 0s.
+    '''
+    df[col_name].fillna(value=0, inplace=True)
+    
+    return df
+
+def get_features(df_baseline, utils, participants_list, timepoint='baseline'):
+    # Load necessary study files
+    df_pd_history = load_ppmi_csv(utils, FILENAME_PD_HISTORY)
+    df_demographics = load_ppmi_csv(utils, FILENAME_DEMOGRAPHICS)
+    df_socio = load_ppmi_csv(utils, FILENAME_SOCIO)
+    df_age = load_ppmi_csv(utils, FILENAME_AGE)
+
+    df_baseline = df_baseline[df_baseline[COL_PAT_ID].isin(participants_list)]
+    df_features = df_baseline[['PATNO', 'EVENT_ID','MCATOT', 'GDS_TOTAL', 'UPDRS_TOT']]
+    
+    # Necessary columns for demographic file
+    cols_demo = ['PATNO', 'SEX', 'RAWHITE', 'HISPLAT', 'RAINDALS','RABLACK', 'RAASIAN', 
+                 'RAHAWOPI', 'RANOS','HANDED']
+    
+    df_features = df_features.merge(
+        df_demographics[cols_demo],
+        on=[COL_PAT_ID],
+    )
+    
+    # Necessary columns for PD file
+    cols_PD = ['PATNO','INFODT','SXDT', 'PDDXDT', 'DXTREMOR', 'DXRIGID', 
+               'DXBRADY', 'DXPOSINS']
+    
+    df_features = df_features.merge(
+        df_pd_history[cols_PD],
+        on=[COL_PAT_ID],
+    )
+    
+    # Necessary columns for social file 
+    cols_socio = ['PATNO','EDUCYRS']
+    
+    df_features = df_features.merge(
+        df_socio[cols_socio].drop_duplicates(subset=[COL_PAT_ID]),
+        on=[COL_PAT_ID],
+    )
+
+    # Necessary columns for age file
+    df_features = df_features.merge(df_age, on=[COL_PAT_ID, COL_VISIT_TYPE])
+    df_features = df_features.drop_duplicates(subset=[COL_PAT_ID])
+    
+    df_features['INFODT'] = pd.to_datetime(df_features['INFODT'], format='%m-%y')
+    df_features['PDDXDT'] = pd.to_datetime(df_features['PDDXDT'], format='%m-%y')
+    
+    # Manage dates with SXDT columns (M/Y to M-Y)
+    list_symptom_date = []
+    for i, row in df_features.iterrows():
+        date = row['SXDT']
+        m = int(date.split('/')[0])
+        y = int(date.split('/')[1])
+        list_symptom_date += [dt.datetime.strptime('{:02d}-{}'.format(int(m), int(y)), '%m-%Y')]
+    
+    df_features['SXDT'] = list_symptom_date
+    
+    # Days bw diagnosis and visit
+    df_features['V-DXDT'] = (
+            df_features[COL_DATE_INFO] - df_features[COL_DATE_PD]) / np.timedelta64(1, 'D')
+    
+    # Days bw symptoms and visit
+    df_features['V-SXDT'] = (
+            df_features[COL_DATE_INFO] - df_features['SXDT']) / np.timedelta64(1, 'D')
+    
+    df_features = df_features.drop(['INFODT', 'SXDT', 'PDDXDT'],axis=1)
+    
+    if timepoint == 'baseline':
+        df_features = df_features.drop(['UPDRS_TOT'], axis=1) # only included for prediction
+        
+    df_features = df_features.set_index('PATNO')
+    
+    df_features = impute_mean(df_features, 'MCATOT', True)
+    df_features = impute_mean(df_features, 'GDS_TOTAL', True)
+    
+    return df_features
+
+def get_threshold(df_cohort_baseline, df_cohort_1y, df_cohort_2y, df_cohort_4y):
+    df_longitudinal_scores = df_cohort_baseline[['PATNO', 'EVENT_ID', 'NP3TOT' ,'UPDRS_TOT']].copy()
+    for i, df_pred in enumerate([df_cohort_1y, df_cohort_2y, df_cohort_4y]):
+        if i < 2: 
+            y = i+1
+        else:
+            y = 4
+        df_longitudinal_scores[f'UPDRS_TOT_{y}Y'] = [df_pred['UPDRS_TOT'][df_pred['PATNO']==sub_id].tolist()[0] \
+                                              if sub_id in df_pred['PATNO'].tolist() else np.nan \
+                                              for sub_id in df_cohort_baseline['PATNO'].tolist()]
+    
+        df_longitudinal_scores[f'NP3TOT_{y}Y'] = [df_pred['NP3TOT'][df_pred['PATNO']==sub_id].tolist()[0] \
+                                              if sub_id in df_pred['PATNO'].tolist() else np.nan \
+                                              for sub_id in df_cohort_baseline['PATNO'].tolist()]
+
+    threshold = int(df_longitudinal_scores[['UPDRS_TOT', 'UPDRS_TOT_1Y', 'UPDRS_TOT_2Y', 'UPDRS_TOT_4Y']].median().mean())
+    
+    return threshold
+
+def get_outcome_measures(df, threshold):
+    
+    df_outcome = df[['PATNO', 'EVENT_ID', 'NP3TOT' ,'UPDRS_TOT']].copy()
+    df_outcome['SEVERITY'] = [1 if df_outcome['UPDRS_TOT'].iloc[i] > threshold else 0 for i in range(len(df_outcome))]
+    
+    return df_outcome
