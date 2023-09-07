@@ -48,13 +48,15 @@ def filter_regressors(subject_list, data_dir, output_dir, confounds_list):
 
     reglist.inputs.confounds_list = confounds_list
     
-    regfilter = Node(fsl.FilterRegressor(), name='regfilter')
+    regfilter = Node(fsl.FilterRegressor(output_type='NIFTI_GZ'), name='regfilter')
 
     # DataSink Node - store the wanted results in the wanted repository
     data_sink = Node(
         DataSink(base_directory = output_dir),
         name='data_sink',
     )
+
+    #data_sink.inputs.substitutions = [('_subject_id_', 'sub-')]
 
     workflow.connect(
         [

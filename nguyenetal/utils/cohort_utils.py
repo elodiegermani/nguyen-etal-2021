@@ -9,7 +9,7 @@ import livingpark_utils
 from livingpark_utils.scripts import pd_status
 from livingpark_utils.dataset.ppmi import disease_duration
 
-from .constants import (
+from ..constants import (
     FILENAME_PARTICIPANT_STATUS,
     FILENAME_DEMOGRAPHICS,
     FILENAME_PD_HISTORY,
@@ -27,7 +27,7 @@ from .constants import (
     FILENAME_FMRI_METADATA
 )
 
-from .constants import (
+from ..constants import (
     COL_PAT_ID,
     COL_VISIT_TYPE,
     COL_STATUS,
@@ -46,7 +46,7 @@ from .constants import (
     COL_IMAGE_DESC
 )
 
-from .constants import (
+from ..constants import (
     COL_DATE_INFO,
     COL_DATE_BIRTH,
     COL_DATE_PD,
@@ -57,7 +57,7 @@ from .constants import (
     TR_VAL,
 )
 
-from .constants import (
+from ..constants import (
     COL_IMAGING_PROTOCOL,
     COLS_DATE, 
     IDA_STATUS_MAP,
@@ -203,90 +203,6 @@ def load_ppmi_csv(
 
     return df_ppmi
 
-
-def load_ppmi_fmri(
-    utils: livingpark_utils.LivingParkUtils,
-    filename: str,
-    from_ida_search: bool = False,
-    convert_dates: bool = True,
-    alternative_dir: str = ".",
-    cols_to_impute: str | list | None = None,
-    **kwargs,
-) -> pd.DataFrame:
-    """Load PPMI csv file as a pandas dataframe.
-
-    Parameters
-    ----------
-    utils : livingpark_utils.LivingParkUtils
-        the notebook's LivingParkUtils instance
-    filename : str
-        name of file to be loaded
-    from_ida_search : bool, optional
-        if True, column names and values will be converted from IDA format
-        to match the other PPMI study files, by default False
-    convert_dates : bool, optional
-        if True, date columns will be converted to pd.datetime format, by default True
-    alternative_dir : str, optional
-        fallback directory if file is not found in utils.study_files_dir, by default "."
-    cols_to_impute : str | list, optional
-        column(s) where missing values should be imputed with the mean, by default None
-    **kwargs : optional
-        additional keyword arguments to be passed to convert_date_cols()
-
-    Returns
-    -------
-    pd.DataFrame
-        loaded/preprocessed dataframe
-
-    Raises
-    ------
-    FileNotFoundError
-        file not found in either utils.study_files_dir or alternative_dir
-    RuntimeError
-        IDA format conversion issue
-    """
-    filepath = Path(utils.study_files_dir, filename)
-
-    if not filepath.exists():
-        filepath = Path(alternative_dir, filename)
-    if not filepath.exists():
-        raise FileNotFoundError(
-            f"File {filename} is not in either "
-            f"{utils.study_files_dir} or {alternative_dir}"
-        )
-        
-    df_fmri = pd.read_excel(filepath)
-
-    # convert IDA search results to the same format as other PPMI study files
-    if from_ida_search:
-        df_fmri = df_fmri.rename(columns=IDA_COLNAME_MAP)
-        
-        # convert visit code
-        missing_keys = set(df_fmri[COL_STATUS]) - set(IDA_STATUS_MAP.keys())
-        if len(missing_keys) != 0:
-            raise RuntimeError(f"Missing keys in conversion map: {missing_keys}")
-        df_fmri[COL_STATUS] = df_fmri[COL_STATUS].map(IDA_STATUS_MAP)
-
-    # convert subject IDs to integers
-    # IDs should be all integers to be consistent
-    # if they are strings the cohort_ID hash can change even if the strings are the same
-    df_fmri[COL_PAT_ID] = pd.to_numeric(df_fmri[COL_PAT_ID], errors="coerce")
-    invalid_subjects = df_fmri.loc[df_fmri[COL_PAT_ID].isna(), COL_PAT_ID].to_list()
-    if len(invalid_subjects) > 0:
-        print(
-            f"Dropping {len(invalid_subjects)} subjects with non-integer IDs"
-            # f": {invalid_subjects}"
-        )
-        df_fmri = df_fmri.loc[~df_fmri[COL_PAT_ID].isin(invalid_subjects)]
-
-    if convert_dates:
-        df_fmri = convert_date_cols(df_fmri, **kwargs)
-
-    if cols_to_impute is not None:
-        df_fmri = mean_impute(df_fmri, cols_to_impute)
-
-    return df_fmri
-
 def get_fMRI_cohort(
     utils: livingpark_utils.LivingParkUtils,
     filename: str = FILENAME_FMRI_METADATA,
@@ -374,6 +290,7 @@ def compute_summary_features(df, utils, timepoint='baseline', df_baseline=None,
         'MCATOT': "Mean MoCA at baseline",
         'GDS_TOTAL': "Mean GDS at Baseline",
         'NHY': "Mean Hoehn-Yahr stage"}):
+    
     
     # Load necessary study files
     df_pd_history = load_ppmi_csv(utils, FILENAME_PD_HISTORY)

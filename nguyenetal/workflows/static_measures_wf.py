@@ -34,7 +34,7 @@ def static_measures(subject_list, data_dir, output_dir,
     if cluster_size not in [7, 19, 27]:
         raise ValueError('{} is not a valid cluster size. Must be 7, 19, or 27'.format(cluster_size))
 
-    workflow = Workflow('static', base_dir=os.path.join(output_dir, 'working_dir'))
+    workflow = Workflow('static_measures_wf', base_dir=os.path.join(output_dir, 'working_dir'))
 
     info_source = Node(IdentityInterface(fields=['subject_id']), name='info_source')
     info_source.iterables = [('subject_id', subject_list)]
@@ -42,10 +42,10 @@ def static_measures(subject_list, data_dir, output_dir,
     # Templates to select files node
     file_templates = {
         'func': join(
-            'sub-{subject_id}', 'func', 'sub-{subject_id}_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz'
+            'confounds_filter', 'results', '_subject_id_{subject_id}', 'sub-{subject_id}_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold_regfilt.nii.gz'
             ), 
         'mask': join(
-            'sub-{subject_id}', 'func', 'sub-{subject_id}_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'
+            'fmriprep', 'sub-{subject_id}', 'func', 'sub-{subject_id}_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'
         )
     }
     
@@ -66,6 +66,8 @@ def static_measures(subject_list, data_dir, output_dir,
 
     # Copy outputs into a user-friendly location
     datasink = Node(DataSink(base_directory=output_dir, remove_dest_dir=True), name='datasink')
+    #datasink.inputs.substitutions = [('_subject_id_', 'sub-')]
+
     workflow.connect(info_source, 'subject_id', select_files, 'subject_id')
     workflow.connect(select_files, 'mask', alff_workflow, 'inputspec.rest_mask')
     workflow.connect(select_files, 'mask', reho_workflow, 'inputspec.rest_mask')
