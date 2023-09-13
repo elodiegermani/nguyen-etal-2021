@@ -11,6 +11,8 @@ def get_ICA_motion_related_regressors(ica_directory, subject_id):
     '''
     from glob import glob
     import pandas as pd 
+    from os.path import join 
+    import os
 
     ica_idx_file = join(ica_directory, f'sub-{subject_id}', 'classified_motion_ICs.txt')
     ica_regressors_file = join(ica_directory, f'sub-{subject_id}', 'melodic.ica', 'melodic_mix')
@@ -20,7 +22,7 @@ def get_ICA_motion_related_regressors(ica_directory, subject_id):
     with open(ica_idx_file, 'r') as f:
         ic_list = [int(i)-1 for i in f.read().split(',')]
 
-    df_motion_timeseries = df_timeseries.iloc[:,t]
+    df_motion_timeseries = df_timeseries.iloc[:,ic_list]
 
     df_motion_timeseries_fpath = join(os.getcwd(), f'sub-{subject_id}_motion-related-ic.tsv')
     df_motion_timeseries.to_csv(df_motion_timeseries_fpath, 
@@ -36,7 +38,7 @@ def merge_confounds_files(motion_regressors_file, ica_file, wm_csf_file, subject
     from os.path import join 
     import os
 
-    df_motion = pd.read_csv(motion_regressors_file, sep='\s+', index_col=None)
+    df_motion = pd.read_csv(motion_regressors_file, sep='\s+', index_col=None, header=None)
     df_ica = pd.read_csv(ica_file, sep='\s+', index_col = None, header = None)
     df_wm_csf = pd.read_csv(wm_csf_file, sep = '\s+', index_col = None)
 

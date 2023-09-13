@@ -11,15 +11,14 @@ def get_timeseries_confounds_file(file_list, subject_id):
 	import pandas as pd
 	from os.path import join
 	import os 
-	filename = join(os.getcwd(), f'{subject_id}_task-rest_desc-confounds_timeseries.tsv')
+	
+	filename = join(os.getcwd(), f'sub-{subject_id}_task-rest_desc-confounds_timeseries.tsv')
 	df_list = [pd.read_csv(f, sep='\s+', header=None, index_col=None) for f in sorted(file_list)]
-
+	
 	df = pd.DataFrame({'csf':df_list[0][0].tolist(), 'white_matter': df_list[-1][0].tolist()})
-
 	df.to_csv(filename, header=True, sep='\t', index=False)
 
 	return filename
-
 
 class Anatomical_Preprocessing:
 	'''
@@ -171,10 +170,12 @@ class Anatomical_Preprocessing:
 			name='extract_signal'
 		)
 
-		create_df = Node(
+		create_df = JoinNode(
 			Function(input_names=['file_list', 'subject_id'],
 					output_names=['filename'],
 					function=get_timeseries_confounds_file),
+            joinsource='extract_maps',
+            joinfield='file_list',
 			name = 'create_df')
 
 		# DataSink Node - store the wanted results in the wanted repository
@@ -197,7 +198,7 @@ class Anatomical_Preprocessing:
 			(extract_signal, data_sink, [('out_file', 'results_afni.@1D_TS')]),
 			(extract_signal, create_df, [('out_file', 'file_list')]),
 			(info_source, create_df,[('subject_id', 'subject_id')]),
-			(create_df, data_sink, [('filename', 'results_fsl.@df')])
+			(create_df, data_sink, [('filename', 'results_afni.@df')])
 		])
 
 		return workflow
