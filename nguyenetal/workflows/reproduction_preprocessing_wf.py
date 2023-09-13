@@ -42,7 +42,7 @@ class Preprocessing_Pipeline():
 	    inputnode = Node(IdentityInterface(fields=['in_file', 'template']),
 	                        name='inputnode')
 	    
-	    outputnode = Node(IdentityInterface(fields=['registered_image']), 
+	    outputnode = Node(IdentityInterface(fields=['registered_image', 'warped_image', 'transform']), 
 	                        name='outputnode')
 	    
 	    extract_ref = Node(interface=fsl.ExtractROI(t_size=1),
@@ -108,6 +108,8 @@ class Preprocessing_Pipeline():
 	           (inputnode, apply_trans_func, [('template', 'reference_image'),
 	                                           ('in_file', 'input_image')]),
 	           (reg, apply_trans_func, [('composite_transform', 'transforms')]),
+	           (reg, outputnode, [('warped_image', 'warped_image'),
+	           					('composite_transform', 'transform')]),
 	           (apply_trans_func, outputnode, [('output_image', 'registered_image')])
 	        ]
 	    )
@@ -151,7 +153,8 @@ class Preprocessing_Pipeline():
 	        name='extractref')
 
 	    motion_correction = Node(
-	        fsl.MCFLIRT(dof=6),
+	        fsl.MCFLIRT(dof=6,
+	        			save_plots=True),
 	        name='motion_correction'
 	    )
 
@@ -209,6 +212,8 @@ class Preprocessing_Pipeline():
 	            (non_linear_registration_func, data_sink, [('outputnode.registered_image', 'results.@registered_func')]),
 	            #(ica_aroma, data_sink,[('nonaggr_denoised_file', 'results.@nonaggr_file'),
 	            #                      ('out_dir', 'results.@result_dir')]),
+	            (non_linear_registration_func, data_sink, [('outputnode.warped_image', 'results.@warped_image'),
+	            											('outputnode.transform', 'results.@transform')]),
 	            (segment, data_sink, [('partial_volume_files', 'results.@segmap')])
 	        ]
 	    )

@@ -139,11 +139,19 @@ class StaticMeasures_Pipeline:
                 output_names=['df_list']), 
             name='compute_roi_measures_alff')
 
+        compute_roi_measures_alff.inputs.feature = 'alff'
+        compute_roi_measures_alff.inputs.cereb_atlas = self.cereb_atlas
+        compute_roi_measures_alff.inputs.striatum_atlas = self.striatum_atlas
+
         compute_roi_measures_falff = Node(
             Function(function=get_mean_ROI_values, 
                 input_names=['feature_image', 'feature', 'subject_id', 'cereb_atlas', 'striatum_atlas'],
                 output_names=['df_list']), 
             name='compute_roi_measures_falff')
+
+        compute_roi_measures_falff.inputs.feature = 'falff'
+        compute_roi_measures_falff.inputs.cereb_atlas = self.cereb_atlas
+        compute_roi_measures_falff.inputs.striatum_atlas = self.striatum_atlas
 
         compute_roi_measures_reho = Node(
             Function(function=get_mean_ROI_values, 
@@ -184,9 +192,9 @@ class StaticMeasures_Pipeline:
             (reho_workflow, compute_roi_measures_reho, 
                 [('outputspec.raw_reho_map', 'feature_image')]),
             (compute_roi_measures_alff, datasink, 
-                [('df_list', 'results.@alff_atlas')])
+                [('df_list', 'results.@alff_atlas')]),
             (compute_roi_measures_falff, datasink, 
-                [('df_list', 'results.@falff_atlas')])
+                [('df_list', 'results.@falff_atlas')]),
             (compute_roi_measures_reho, datasink, 
                 [('df_list', 'results.@reho_atlas')])
             ])
