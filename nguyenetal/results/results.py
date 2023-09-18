@@ -1,98 +1,113 @@
 import pandas as pd
 import pickle
-import sys
 import os
-import glob
-import re
 import numpy as np
 from sklearn import metrics, model_selection
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def get_prediction_results(inputs, target, threshold, output_dir, model_list):
-    results = []
-    pred_list = []
-    for model_name in model_list:
-        try:
-            with open(f'{output_dir}/{model_name}_results.pkl', 'rb') as f:
-                model_dict = pickle.load(f)
-                f.close()
-        except FileNotFoundError:
-            continue
-            
-        outer = model_selection.LeaveOneOut()
-        
-        pred = np.zeros(inputs.shape[0])
-        rsquare_train = np.zeros_like(pred)
-        rmse_train = np.zeros_like(pred)
-        rsquare_valid = np.zeros_like(pred)
-        rmse_valid = np.zeros_like(pred)
+def cross_validation_results(pipeline, feature, timepoint):
 
-        for i, (train_idx, test_idx) in enumerate(outer.split(inputs, target)):
-            inputs_test = inputs.iloc[test_idx]
-            inputs_train = inputs.iloc[train_idx]
-            model = model_dict['estimator'][i].best_estimator_
-            pred[i] = model.predict(inputs_test.astype(np.float64))
-            pred_train = model.predict(inputs_train.astype(np.float64))
-            rsquare_train[i] = metrics.r2_score(target[train_idx], pred_train)
-            rmse_train[i] = np.sqrt(metrics.mean_squared_error(target[train_idx], pred_train))
-
-            search_results = pd.DataFrame(model_dict['estimator'][i].cv_results_)
-            best_model = model_dict['estimator'][i].best_index_
-            rsquare_valid[i] = search_results['mean_test_rsquare'].iloc[best_model]
-            rmse_valid[i] = -search_results['mean_test_rmse'].iloc[best_model]
-
-        true_class = target > threshold
-        pred_class = pred > threshold
-        trueneg, falsepos, falseneg, truepos = metrics.confusion_matrix(true_class,
-                                                                        pred_class).ravel()
-
-        results += [{'Model': model,
-                        'Test R2' : metrics.r2_score(target, pred),
-                        'Test RMSE': np.sqrt(metrics.mean_squared_error(target, pred)),
-                        'Test AUC': metrics.roc_auc_score(true_class, pred_class),
-                        'Test precision': metrics.precision_score(true_class, pred_class),
-                        'Test recall': metrics.recall_score(true_class, pred_class),
-                        'Test accuracy': metrics.accuracy_score(true_class, pred_class),
-                        'Test f1': metrics.f1_score(true_class, pred_class),
-                        'Test NPV': trueneg / (trueneg + falseneg),
-                        'Test specificity': trueneg / (trueneg + falsepos),
-                        'Val Mean R2': np.mean(rsquare_valid),
-                        'Val Std R2': np.std(rsquare_valid),
-                        'Val Mean RMSE': np.mean(rmse_valid),
-                        'Val Std RMSE': np.std(rmse_valid),
-                        'Train Mean R2': np.mean(rsquare_train),
-                        'Train Std R2': np.std(rsquare_train),
-                        'Train Mean RMSE': np.mean(rmse_train),
-                        'Train Std RMSE': np.std(rmse_train)}]
-        
-        pred_list.append(pred)
-
-    results_df = pd.DataFrame(results)
-    return results_df, pred_list
-
-
-def find_best_model(df):
-    best_model = df[df['Val Mean R2']==df['Val Mean R2'].max()]
+    model_list = ['ElasticNet', 'LinearSVR', 'GradientBoostingRegressor', 'RandomForestRegressor']
+    atlas_list = ['schaefer', 'basc197', 'basc444']
     
-    return best_model
-
-def merge_results(pipeline, timepoint, feature):
-    df_feature_results = pd.DataFrame()
-                
-    for atlas in ['schaefer', 'basc197', 'basc444']: # Concat results of different atlases  
-        outer = model_selection.LeaveOneOut()
+    results = []
+    for model_name in model_list:
+        for atlas in atlas_list: 
+            output_dir = f'./outputs/{pipeline}/prediction_scores/'+\
+                f'prediction-{timepoint}_atlas-{atlas}_feature-{feature}'
+            try:
+                with open(f'{output_dir}/{model_name}_results.pkl', 'rb') as f:
+                    model_dict = pickle.load(f)
+                    f.close()
+            except FileNotFoundError:
+                print(f'{output_dir}/{model}_results.pkl')
+                continue
+    
+            df_all_features = pd.read_csv(f'{output_dir}/data.csv',
+                               header=0, index_col=None)
+            df_outcome = pd.read_csv(f'{output_dir}/target.csv',
+                               header=0, index_col=None)
         
-        output_dir=f'./outputs/{pipeline}/prediction_scores/'+\
-        f'predition-{timepoint}_atlas-{atlas}_feature-{feature}'
+            target = df_outcome['UPDRS_TOT'].to_numpy(copy=True)
+            inputs = df_all_features.drop(['EVENT_ID'], axis=1).astype(np.float64)
+            
+            outer = model_selection.LeaveOneOut()
+    
+            for i, (train_idx, test_idx) in enumerate(outer.split(inputs, target)):
+                inputs_test = inputs.iloc[test_idx]
+                label_test = target[test_idx]
+                inputs_train = inputs.iloc[train_idx]
+                model = model_dict['estimator'][i].best_estimator_
+                pred = model.predict(inputs_test.astype(np.float64))
+    
+                search_results = pd.DataFrame(model_dict['estimator'][i].cv_results_)
+                best_model = model_dict['estimator'][i].best_index_
+                rsquare_valid = search_results['mean_test_rsquare'].iloc[best_model]
+                rmse_valid = -search_results['mean_test_rmse'].iloc[best_model]
+        
+                results += [{'Model': model_name,
+                             'Atlas': atlas,
+                             'LOOCV Fold':i,
+                             'Prediction': pred[0],
+                             'Target': label_test[0],
+                             'Val RMSE': rmse_valid,
+                             'Val R2': rsquare_valid}]
+                
+    results_df = pd.DataFrame(results)
 
-        df = pd.read_csv(f'{output_dir}/metrics.csv', index_col=0)
+    return results_df
 
-        df['Atlas']=[atlas for i in range(len(df))]
 
-        df_feature_results = pd.concat([df_feature_results, df])
+def prediction_results(df, threshold, select_across='folds'):
+    best_model_df = pd.DataFrame()
+    
+    if select_across == 'folds':
+        for fold in np.unique(df['LOOCV Fold']):
+            df_fold = df[df['LOOCV Fold']==fold]
+            best_model = df_fold.loc[(df_fold['Val RMSE']==np.min(df_fold['Val RMSE']))]
+            best_model_df = pd.concat([best_model_df, best_model])
+            
+    if select_across == 'model':
+        for model in np.unique(df['Model'].tolist()):
+            for atlas in np.unique(df['Atlas'].tolist()):
+                model_atlas_df = df.loc[(df['Model']==model) & (df['Atlas']==atlas)]
+                mean_val_r2 = np.mean(model_atlas_df['Val R2']) 
+                mean_val_rmse = np.mean(model_atlas_df['Val RMSE'])
+                model_atlas_df['Val R2'] = mean_val_r2
+                model_atlas_df['Val RMSE'] = mean_val_rmse
+                
+                best_model_df = pd.concat([best_model_df, model_atlas_df])
+        best_model_df = best_model_df[best_model_df['Val RMSE'] == np.min(best_model_df['Val RMSE'])]
 
-    return df_feature_results
+    best_model_df['True class'] = best_model_df['Target'] > threshold
+    best_model_df['Predicted class'] = best_model_df['Prediction'] > threshold
+    
+    trueneg, falsepos, falseneg, truepos = metrics.confusion_matrix(best_model_df['True class'], 
+                                            best_model_df['Predicted class'] ).ravel()
+    
+    r_square = metrics.r2_score(best_model_df['Target'], best_model_df['Prediction'])
+    rmse = np.sqrt(metrics.mean_squared_error(best_model_df['Target'], best_model_df['Prediction']))
+    auc = metrics.roc_auc_score(best_model_df['True class'], best_model_df['Predicted class'])
+    ppv = metrics.precision_score(best_model_df['True class'], best_model_df['Predicted class'])
+    npv = trueneg / (trueneg + falseneg)
+    spec = trueneg / (trueneg + falsepos)
+    sens = metrics.recall_score(best_model_df['True class'], best_model_df['Predicted class'])
+
+    dict_scores = {'best_performing_model': best_model_df['Model'].value_counts().sort_values().index[-1],
+                  'best_atlas': best_model_df['Atlas'].value_counts().sort_values().index[-1],
+                  'r2': r_square,
+                  'rmse': rmse,
+                  'auc': auc,
+                  'ppv': ppv, 
+                  'npv': npv,
+                  'spec': spec,
+                  'sens': sens}
+
+    scores_df = pd.DataFrame([dict_scores])
+
+    return best_model_df, scores_df
+
 
 timepoint_dict = {'baseline':'Baseline',
                  '1y': 'Year 1',
@@ -111,59 +126,38 @@ model_dict = {'ElasticNet':'ElasticNet',
              'GradientBoostingRegressor': 'Gradient Boosting',
              'RandomForestRegressor': 'Random Forest'}
 
-def get_results_df(pipeline, original_df):
+def plot_results_table(pipeline, original_df):
 
     global_df = pd.DataFrame(columns = ['MDS-UPDRS Prediction target','Feature','Type','Best performing model',
                                         'Best performing parcellation', 'R2', 'RMSE', 'AUC', 
                                         'PPV', 'NPV', 'Spec.','Sens.'])
         
     for timepoint in ['baseline', '1y', '2y', '4y']:
-        
         for feature in ['falff', 'ReHo']:
+
             # Look at results for original paper for timepoint and feature
-            sub_original_df = original_df[
-            original_df['MDS-UPDRS Prediction target']==timepoint_dict[timepoint]
-            ][
-            original_df['Feature']==feature_dict[feature]
-            ]
-            
+            sub_original_df = original_df[original_df['MDS-UPDRS Prediction target']==timepoint_dict[timepoint]][original_df['Feature']==feature_dict[feature]]
             global_df = pd.concat([global_df, sub_original_df]) # Add the results to the table 
 
             # Look at results computed for replication
-            df_feature_results = merge_results(pipeline, timepoint, feature)
-            
-            # Check for best model across all atlases 
-            best_model_df = find_best_model(df_feature_results) 
-
-            # Process dataframe to obtain results 
-            model = best_model_df['Model'].iloc[0].split('[')[1].split(',')[4].split('\'')[1]
-            atlas = best_model_df['Atlas'].iloc[0]
-            r_square = best_model_df['Test R2'].iloc[0]
-            rmse = best_model_df['Test RMSE'].iloc[0]
-            auc = best_model_df['Test AUC'].iloc[0]
-            ppv = best_model_df['Test precision'].iloc[0]
-            npv = best_model_df['Test NPV'].iloc[0]
-            specificity = best_model_df['Test specificity'].iloc[0]
-            sensitivity = best_model_df['Test recall'].iloc[0]
+            df_feature_results = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}_feature-{feature}_test_metrics.csv')
             
             sub_df = pd.DataFrame({
                 'MDS-UPDRS Prediction target': [timepoint_dict[timepoint]],
                 'Feature': [str(feature_dict[feature])],
                 'Type': ['Replication'],
-                'Best performing model': [model_dict[model]],
-                'Best performing parcellation': [atlas_dict[atlas]],
-                'R2': [round(r_square,5)],
-                'RMSE': [round(rmse,3)],
-                'AUC':[round(auc,3)],
-                'PPV': [str(round(ppv*100, 1))+'%'],
-                'NPV':[str(round(npv*100,1))+'%'],
-                'Spec.': [str(round(specificity*100, 1))+'%'],
-                'Sens.': [str(round(sensitivity*100, 1))+'%']
+                'Best performing model': [model_dict[df_feature_results['best_performing_model'].iloc[0]]],
+                'Best performing parcellation': [atlas_dict[df_feature_results['best_atlas'].iloc[0]]],
+                'R2': [round(df_feature_results['r2'].iloc[0],5)],
+                'RMSE': [round(df_feature_results['rmse'].iloc[0],3)],
+                'AUC':[round(df_feature_results['auc'].iloc[0],3)],
+                'PPV': [str(round(df_feature_results['ppv'].iloc[0]*100, 1))+'%'],
+                'NPV':[str(round(df_feature_results['npv'].iloc[0]*100,1))+'%'],
+                'Spec.': [str(round(df_feature_results['spec'].iloc[0]*100, 1))+'%'],
+                'Sens.': [str(round(df_feature_results['sens'].iloc[0]*100, 1))+'%']
             })
     
             global_df = pd.concat([global_df, sub_df])
-
-    #global_df = global_df.set_index(['MDS-UPDRS Prediction target', 'Feature','Type'])
 
     return global_df
 
@@ -174,7 +168,6 @@ def plot_unity(xdata, ydata, **kwargs):
     plt.gca().plot(points, points, color='r', marker=None,
             linestyle='--', linewidth=1.0)
 
-pipeline='fmriprep_pipeline'
 
 def plot_pred_real(pipeline, global_df):
     if not os.path.isdir(f'./outputs/{pipeline}/figures'):
@@ -185,34 +178,16 @@ def plot_pred_real(pipeline, global_df):
         i=0
         for feature in ['ReHo', 'falff']:
             i += 1
-            best_model = global_df['Best performing model'].loc[(global_df['Type']=='Replication') &\
-                                    (global_df['Feature']==feature_dict[feature]) &\
-                                    (global_df['MDS-UPDRS Prediction target']==timepoint_dict[timepoint])].iloc[0]
-    
-            best_model = list(model_dict.keys())[list(model_dict.values()).index(best_model)]
-    
-            best_atlas = global_df['Best performing parcellation'].loc[(global_df['Type']=='Replication') &\
-                                    (global_df['Feature']==feature_dict[feature]) &\
-                                    (global_df['MDS-UPDRS Prediction target']==timepoint_dict[timepoint])].iloc[0].lower()
-    
             rsquare = round(global_df['R2'].loc[(global_df['Type']=='Replication') &\
                                     (global_df['Feature']==feature_dict[feature]) &\
                                     (global_df['MDS-UPDRS Prediction target']==timepoint_dict[timepoint])].iloc[0],5)
     
-            output_dir=f'./outputs/{pipeline}/prediction_scores/'+\
-            f'predition-{timepoint}_atlas-{best_atlas}_feature-{feature}'
-    
-            with open(f'{output_dir}/pred_{best_model}.txt', 'r') as f:
-                pred = f.read().split(',')[:-1]
-            pred = [float(p) for p in pred]
-    
-            df_outcome = pd.read_csv(f'{output_dir}/target.csv',
-                                   header=0, index_col=None)
+            df_pred_target = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/'+\
+                                f'prediction-{timepoint}_feature-{feature}_test_results.csv')
             
-            target = df_outcome['UPDRS_TOT'].to_numpy(copy=True)
     
-            df_comp = pd.DataFrame({f'True MDS-UPDRS score at {timepoint_dict[timepoint]}':target,
-                                   f'Predicted MDS-UPDRS score at {timepoint_dict[timepoint]}':pred})
+            df_comp = pd.DataFrame({f'True MDS-UPDRS score at {timepoint_dict[timepoint]}':df_pred_target['Target'].tolist(),
+                                   f'Predicted MDS-UPDRS score at {timepoint_dict[timepoint]}':df_pred_target['Prediction'].tolist()})
     
             ax = fig.add_subplot(1,2,i)
             ax.grid(False)
@@ -223,5 +198,4 @@ def plot_pred_real(pipeline, global_df):
             ax.set_title(f'Prediction of {timepoint_dict[timepoint]} severity from {feature_dict[feature]}')
             
         plt.tight_layout()
-        plt.savefig(f'./outputs/{pipeline}/figures/plot_pred-target_{timepoint}.png')  
-
+        plt.savefig(f'./outputs/{pipeline}/figures/plot_pred-target_{timepoint}.png') 

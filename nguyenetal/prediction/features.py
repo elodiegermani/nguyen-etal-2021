@@ -37,8 +37,9 @@ def save_features(pipeline, features_dict, outcome_dict, only_imaging=False):
     
                 if not os.path.isdir(output_dir):
                     os.mkdir(output_dir)
-    
-                df_all_features.to_csv(f'{output_dir}/data.csv',
-                                   header=True, index=False)
-                df_outcome.to_csv(f'{output_dir}/target.csv',
-                                   header=True, index=False)
+
+                if not os.path.exists(f'{output_dir}/data.csv') or not os.path.exists(f'{output_dir}/target.csv'):
+                    df_all_features.to_csv(f'{output_dir}/data.csv',
+                                       header=True, index=False)
+                    df_outcome.to_csv(f'{output_dir}/target.csv',
+                                       header=True, index=False)
