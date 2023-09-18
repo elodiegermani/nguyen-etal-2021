@@ -110,10 +110,10 @@ class Anatomical_Preprocessing:
 			(select_files, resample, [('func', 'reference')]),
 			(resample, extract_signal, [('out_file', 'mask')]),
 			(select_files, extract_signal, [('func', 'in_file')]),
-			(extract_signal, data_sink, [('out_file', 'results_fsl.@1D_TS')]),
+			(extract_signal, data_sink, [('out_file', 'anat_preproc_fsl.@1D_TS')]),
 			(extract_signal, create_df, [('out_file', 'file_list')]),
 			(info_source, create_df, [('subject_id', 'subject_id')]),
-			(create_df, data_sink, [('filename', 'results_fsl.@df')])
+			(create_df, data_sink, [('filename', 'anat_preproc_fsl.@df')])
 		])
 
 		return workflow
@@ -195,10 +195,10 @@ class Anatomical_Preprocessing:
 			(select_files, resample, [('func', 'master')]),
 			(resample, extract_signal, [('out_file', 'mask')]),
 			(select_files, extract_signal, [('func', 'in_file')]),
-			(extract_signal, data_sink, [('out_file', 'results_afni.@1D_TS')]),
+			(extract_signal, data_sink, [('out_file', 'anat_preproc_afni.@1D_TS')]),
 			(extract_signal, create_df, [('out_file', 'file_list')]),
 			(info_source, create_df,[('subject_id', 'subject_id')]),
-			(create_df, data_sink, [('filename', 'results_afni.@df')])
+			(create_df, data_sink, [('filename', 'anat_preproc_afni.@df')])
 		])
 
 		return workflow

@@ -5,6 +5,8 @@ import copy
 from nguyenetal.utils import cross_validation
 import numpy as np
 import pandas as pd
+import os
+import pickle
 
 def rmse(true, predict):
     return np.sqrt(np.mean(np.square(true - predict)))
@@ -22,7 +24,8 @@ class RegressorPanel:
                  outer=3,
                  inner=5,
                  metric_rs='rsquare',
-                 random_seed=432):
+                 random_seed=432,
+                 output_dir=None):
         """
         Set of shallow learning models for regression.
 
@@ -59,6 +62,10 @@ class RegressorPanel:
         self.feature_selection = None
         self.metric_rs = metric_rs
         self.random_seed = random_seed
+        self.output_dir = output_dir
+
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
 
     def set_models(self, *args):
         """
@@ -85,7 +92,7 @@ class RegressorPanel:
                                             {'alpha': np.logspace(0, 1.5, 1000),
                                              'l1_ratio': stats.uniform(0, 1.0)}
                                             ),
-                             'LinearSVR': (svm.LinearSVR(tol=0.001, max_iter=50000),
+                             'LinearSVR': (svm.LinearSVR(tol=0.001, max_iter=50000, dual='auto'),
                                            {'C': np.logspace(-3, 0, 1000, base=10),
                                             'epsilon': np.logspace(-2, 0, 1000),
                                             'loss': ['epsilon_insensitive', 'squared_epsilon_insensitive']}
@@ -124,9 +131,9 @@ class RegressorPanel:
         self.preprocessing = pipeline
 
     def set_default_preprocessing(self):
-        self.preprocessing = pipeline.Pipeline([('StandardScaler', preprocessing.StandardScaler()),
-                                                ('SimpleImputer', impute.SimpleImputer())])
-
+        self.preprocessing = pipeline.Pipeline([('scaler', preprocessing.StandardScaler()),
+                                  ('imputer', impute.SimpleImputer())])
+        
     def set_feature_selection(self, feature_selection_tupple):
         """
         Add a feature selection method that will be used after preprocessing and before model fitting. Takes a tuple
@@ -268,6 +275,10 @@ class RegressorPanel:
                 print('Training model {}'.format(model_name), flush=True)
             result_dict, cv_score_dict = self.run_single_model(model_name, n_iters, n_jobs)
             result_all_dict[model_name] = result_dict
+
+            if self.output_dir:
+              with open(self.output_dir + f'/{model_name}_results.pkl', 'wb') as file:
+                  pickle.dump(cv_score_dict, file)
             
             if verbose:
                 print('{}: \nmean val rmse: {} \nmean test rmse: {}' \
@@ -279,5 +290,8 @@ class RegressorPanel:
                       flush=True)
 
         df_summary = pd.DataFrame(result_all_dict).T
+
+        if self.output_dir:
+            df_summary.to_csv(f'{self.output_dir}/summary.csv')
 
         return df_summary

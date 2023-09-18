@@ -167,16 +167,16 @@ class StaticMeasures_Pipeline:
         datasink = Node(DataSink(base_directory=self.output_dir, remove_dest_dir=True), name='datasink')
         datasink.inputs.substitutions = [('_subject_id_', 'sub-')]
 
-        workflow = Workflow('static_measures_wf', base_dir=self.output_dir)
+        workflow = Workflow('static_measures_wf', base_dir=os.path.join(self.output_dir, 'working_dir'))
 
         workflow.connect(info_source, 'subject_id', select_files, 'subject_id')
         workflow.connect(select_files, 'mask', alff_workflow, 'inputspec.rest_mask')
         workflow.connect(select_files, 'mask', reho_workflow, 'inputspec.rest_mask')
         workflow.connect(select_files, 'func', alff_workflow, 'inputspec.rest_res')
         workflow.connect(select_files, 'func', reho_workflow, 'inputspec.rest_res_filt')
-        workflow.connect(alff_workflow, 'outputspec.alff_img', datasink, 'results.@alff')
-        workflow.connect(alff_workflow, 'outputspec.falff_img', datasink, 'results.@falff')
-        workflow.connect(reho_workflow, 'outputspec.raw_reho_map', datasink, 'results.@reho')
+        workflow.connect(alff_workflow, 'outputspec.alff_img', datasink, 'features.@alff')
+        workflow.connect(alff_workflow, 'outputspec.falff_img', datasink, 'features.@falff')
+        workflow.connect(reho_workflow, 'outputspec.raw_reho_map', datasink, 'features.@reho')
         
         workflow.connect([
             (info_source, compute_roi_measures_alff, 
@@ -192,11 +192,11 @@ class StaticMeasures_Pipeline:
             (reho_workflow, compute_roi_measures_reho, 
                 [('outputspec.raw_reho_map', 'feature_image')]),
             (compute_roi_measures_alff, datasink, 
-                [('df_list', 'results.@alff_atlas')]),
+                [('df_list', 'features.@alff_atlas')]),
             (compute_roi_measures_falff, datasink, 
-                [('df_list', 'results.@falff_atlas')]),
+                [('df_list', 'features.@falff_atlas')]),
             (compute_roi_measures_reho, datasink, 
-                [('df_list', 'results.@reho_atlas')])
+                [('df_list', 'features.@reho_atlas')])
             ])
 
 

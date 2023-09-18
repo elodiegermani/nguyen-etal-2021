@@ -23,7 +23,7 @@ def select_volume(filename, which):
         
     return idx
 
-class Preprocessing_Pipeline():
+class Functional_Preprocessing():
 
 	def __init__(self, data_dir, 
 		output_dir, subject_list):
@@ -199,22 +199,22 @@ class Preprocessing_Pipeline():
 	            (extract_ref, motion_correction, [('roi_file', 'ref_file')]),
 	            (motion_correction, skullstrip_func, [('out_file', 'in_file')]),
 	            (skullstrip_func, non_linear_registration_func, [('brain_file', 'inputnode.in_file')]),
-	            (select_files, skullstrip_anat, [('anat', 'in_file')]),
+	            #(select_files, skullstrip_anat, [('anat', 'in_file')]),
 	            #(select_files, brain_extraction_anat, [('anat', 'in_file')]),
-	            (skullstrip_anat, segment, [('out_file', 'in_files')]),
+	            #(skullstrip_anat, segment, [('out_file', 'in_files')]),
 	            #(skullstrip_anat, non_linear_registration_anat, [('out_file', 'inputnode.in_file')]),
 	            #(non_linear_registration_anat, segment, [('outputnode.registered_image', 'in_files')]),
 	            #(segment, binarize, [('partial_volume_files', pickindex, 2), 'in_file']),
 	            #(non_linear_registration_func, ica_aroma, [('outputnode.registered_image', 'in_file')]),
 	            #(motion_correction, ica_aroma, [('par_file', 'motion_parameters')]),
-	            (motion_correction, data_sink, [('par_file', 'results.@motion_param')]),
-	            #(non_linear_registration_anat, data_sink, [('outputnode.registered_image', 'results.@registered_anat')]),
-	            (non_linear_registration_func, data_sink, [('outputnode.registered_image', 'results.@registered_func')]),
-	            #(ica_aroma, data_sink,[('nonaggr_denoised_file', 'results.@nonaggr_file'),
-	            #                      ('out_dir', 'results.@result_dir')]),
-	            (non_linear_registration_func, data_sink, [('outputnode.warped_image', 'results.@warped_image'),
-	            											('outputnode.transform', 'results.@transform')]),
-	            (segment, data_sink, [('partial_volume_files', 'results.@segmap')])
+	            (motion_correction, data_sink, [('par_file', 'func_preproc.@motion_param')]),
+	            #(non_linear_registration_anat, data_sink, [('outputnode.registered_image', 'func_preproc.@registered_anat')]),
+	            (non_linear_registration_func, data_sink, [('outputnode.registered_image', 'func_preproc.@registered_func')]),
+	            #(ica_aroma, data_sink,[('nonaggr_denoised_file', 'func_preproc.@nonaggr_file'),
+	            #                      ('out_dir', 'func_preproc.@result_dir')]),
+	            (non_linear_registration_func, data_sink, [('outputnode.warped_image', 'func_preproc.@warped_image'),
+	            											('outputnode.transform', 'func_preproc.@transform')]),
+	            #(segment, data_sink, [('partial_volume_files', 'func_preproc.@segmap')])
 	        ]
 	    )
 

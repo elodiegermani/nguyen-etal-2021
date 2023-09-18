@@ -41,6 +41,7 @@ def merge_confounds_files(motion_regressors_file, ica_file, wm_csf_file, subject
     df_motion = pd.read_csv(motion_regressors_file, sep='\s+', index_col=None, header=None)
     df_ica = pd.read_csv(ica_file, sep='\s+', index_col = None, header = None)
     df_wm_csf = pd.read_csv(wm_csf_file, sep = '\s+', index_col = None)
+    df_wm_csf = df_wm_csf[['white_matter', 'csf']]
 
     df = df_motion.merge(df_ica, left_index=True, right_index=True)
     df = df.merge(df_wm_csf, left_index=True, right_index=True)
@@ -140,7 +141,7 @@ class NoiseRegression_Pipeline:
                 (ica_motion_regressors, merge_regressors, [('df_motion_timeseries_fpath', 'ica_file')]),
                 (info_source, merge_regressors, [('subject_id', 'subject_id')]),
                 (merge_regressors, regfilter, [('df_fpath', 'design_file')]),
-                (regfilter, data_sink, [('out_file', 'results.@filtered')])
+                (regfilter, data_sink, [('out_file', 'denoising.@filtered')])
             ]
         )
 

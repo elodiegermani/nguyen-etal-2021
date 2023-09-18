@@ -114,6 +114,30 @@ def mean_impute(df: pd.DataFrame, cols: str | list) -> pd.DataFrame:
 
     return df
 
+def zeros_impute(df: pd.DataFrame, cols: str | list) -> pd.DataFrame:
+    """Impute missing values with 0 values.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe
+    col : str | list
+        columns to impute
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with imputed missing values
+    """
+    if type(cols) == str:
+        cols = [cols]
+
+    for col in cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+        df.loc[df[col].isna(), col] = 0
+
+    return df
+
 def load_ppmi_csv(
     utils: livingpark_utils.LivingParkUtils,
     filename: str,
@@ -199,7 +223,7 @@ def load_ppmi_csv(
         df_ppmi = convert_date_cols(df_ppmi, **kwargs)
 
     if cols_to_impute is not None:
-        df_ppmi = mean_impute(df_ppmi, cols_to_impute)
+        df_ppmi = zeros_impute(df_ppmi, cols_to_impute)
 
     return df_ppmi
 
