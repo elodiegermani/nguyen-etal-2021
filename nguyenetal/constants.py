@@ -14,6 +14,7 @@ FILENAME_UPDRS3 = "MDS-UPDRS_Part_III.csv"
 FILENAME_UPDRS3_CLEAN = "MDS_UPDRS_Part_III_clean.csv"
 FILENAME_UPDRS4 = "MDS-UPDRS_Part_IV__Motor_Complications.csv"
 FILENAME_GDS = "Geriatric_Depression_Scale__Short_Version_.csv"
+FILENAME_DOMSIDE = "PD_Features-Archived.csv"
 
 # other file names
 FILENAME_FMRI_INFO = "PPMI_rs-fMRI_Data-and-Methods/PPMI_fs-fMRI_dataReport_spreadsheet_FINAL_20191121.xlsx"

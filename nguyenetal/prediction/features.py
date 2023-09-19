@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-def save_features(pipeline, features_dict, outcome_dict, only_imaging=False):
+def save_features(pipeline, features_dict, outcome_dict, specific=None):
     for timepoint in list(features_dict.keys()):
         for atlas in ['schaefer', 'basc197', 'basc444']:
             for feature in ['falff', 'ReHo']:
@@ -23,18 +23,20 @@ def save_features(pipeline, features_dict, outcome_dict, only_imaging=False):
         
                     df_all_features = pd.merge(df_img_features, df_features, 
                                         left_index=True, right_index=True)
-    
-                    output_dir=f'./outputs/{pipeline}/prediction_scores/predition-{timepoint}'+\
+                    
+                    output_dir=f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}'+\
                     f'_atlas-{atlas}_feature-{feature}'
 
-                    if only_imaging: 
+                    if specific == '_only-imaging': 
                         df_all_features = df_img_features
-                        output_dir += '_only-imaging'
 
                 else: 
                     df_all_features = df_features
-                    output_dir=f'./outputs/{pipeline}/prediction_scores/predition-{timepoint}'
-    
+                    output_dir=f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}'
+
+                if specific:
+                    output_dir += specific
+
                 if not os.path.isdir(output_dir):
                     os.mkdir(output_dir)
 

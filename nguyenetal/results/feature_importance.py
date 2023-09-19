@@ -155,7 +155,7 @@ model_dict = {'ElasticNet':'ElasticNet',
              'GradientBoostingRegressor': 'Gradient Boosting',
              'RandomForestRegressor': 'Random Forest'}
 
-def plot_all_feature_importance(global_df, pipeline):
+def plot_all_feature_importance(global_df, pipeline, specific):
     for timepoint, t in timepoint_dict.items():
 
         for feature, f in feature_dict.items():
@@ -173,10 +173,20 @@ def plot_all_feature_importance(global_df, pipeline):
             output_dir=f'./outputs/{pipeline}/prediction_scores/'+\
             f'prediction-{timepoint}_atlas-{best_atlas}_feature-{feature}'
 
-            model_file = f'{output_dir}/{best_model}_results.pkl'
+            if specific:
+                output_dir += specific
 
-            with open(f'./inputs/atlases/{best_atlas}_labels.txt', 'r') as f:
-                roi_labels = f.readlines()
+            if pipeline != 'no_imaging_features':
+                with open(f'./inputs/atlases/{best_atlas}_labels.txt', 'r') as f:
+                    roi_labels = f.readlines()
+
+            else:
+                roi_labels = []
+                output_dir=f'./outputs/{pipeline}/prediction_scores/'+\
+            f'prediction-{timepoint}'
+                best_atlas = 'none'
+
+            model_file = f'{output_dir}/{best_model}_results.pkl'
 
             df_all_features = pd.read_csv(f'{output_dir}/data.csv',
                                header=0, index_col=None)
@@ -184,7 +194,10 @@ def plot_all_feature_importance(global_df, pipeline):
                                header=0, index_col=None)
 
             target = df_outcome['UPDRS_TOT']#.to_numpy(copy=True)
-            data = df_all_features.drop(['EVENT_ID'], axis=1).astype(np.float64)
+
+            if 'EVENT_ID' in df_all_features.columns:
+                df_all_features = df_all_features.drop(['EVENT_ID'], axis=1)
+            data = df_all_features.astype(np.float64)
 
             if best_model == 'ElasticNet' or best_model=='LinearSVR':
                 importance_attr = 'coef_'
@@ -198,5 +211,6 @@ def plot_all_feature_importance(global_df, pipeline):
             fig = plot_features_importance(df_importance,n_features_plot=10)
             plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}.png')
 
-            fig_2 = plot_brain_features_importance(df_importance, roi_labels, best_atlas, n_features=10)
-            plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_maps_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}.png')
+            if pipeline != 'no_imaging_features':
+                fig_2 = plot_brain_features_importance(df_importance, roi_labels, best_atlas, n_features=10)
+                plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_maps_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}.png')

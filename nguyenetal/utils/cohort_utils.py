@@ -22,6 +22,7 @@ from ..constants import (
     FILENAME_UPDRS3,
     FILENAME_UPDRS4,
     FILENAME_GDS,
+    FILENAME_DOMSIDE,
     FILENAME_FMRI_INFO,
     FILENAME_FMRI_INFO_ZIP,
     FILENAME_FMRI_METADATA
@@ -419,7 +420,7 @@ def impute_zeros(df, col_name):
     
     return df
 
-def get_features(df_baseline, utils, participants_list, timepoint='baseline'):
+def get_features(df_baseline, utils, participants_list, timepoint='baseline', add_DOMSIDE=False):
     # Load necessary study files
     df_pd_history = load_ppmi_csv(utils, FILENAME_PD_HISTORY)
     df_demographics = load_ppmi_csv(utils, FILENAME_DEMOGRAPHICS)
@@ -437,7 +438,13 @@ def get_features(df_baseline, utils, participants_list, timepoint='baseline'):
         df_demographics[cols_demo],
         on=[COL_PAT_ID],
     )
-    
+
+    # Encode HANDED column
+    df_features['HANDED_RIGHT'] = df_features['HANDED'].apply(lambda x: x == 1)
+    df_features['HANDED_LEFT'] = df_features['HANDED'].apply(lambda x: x == 2)
+    df_features['HANDED_BOTH'] = df_features['HANDED'].apply(lambda x: x == 3)
+    df_features = df_features.drop(['HANDED'], axis=1)
+
     # Necessary columns for PD file
     cols_PD = ['PATNO','INFODT','SXDT', 'PDDXDT', 'DXTREMOR', 'DXRIGID', 
                'DXBRADY', 'DXPOSINS']
@@ -446,6 +453,19 @@ def get_features(df_baseline, utils, participants_list, timepoint='baseline'):
         df_pd_history[cols_PD],
         on=[COL_PAT_ID],
     )
+
+    if add_DOMSIDE: # Archived feature, only use if mentioned 
+        df_domside = load_ppmi_csv(utils, FILENAME_DOMSIDE)
+        cols_DOMSIDE = ['PATNO', 'DOMSIDE']
+        df_features = df_features.merge(
+            df_domside[cols_DOMSIDE],
+            on=[COL_PAT_ID],
+        )
+        # Encode DOMSIDE column
+        df_features['DOMSIDE_LEFT'] = df_features['DOMSIDE'].apply(lambda x: (x==1) if not pd.isnull(x) else np.nan)
+        df_features['DOMSIDE_RIGHT'] = df_features['DOMSIDE'].apply(lambda x: (x == 2) if not pd.isnull(x) else np.nan)
+        df_features['DOMSIDE_BOTH'] = df_features['DOMSIDE'].apply(lambda x: (x == 3) if not pd.isnull(x) else np.nan)
+        df_features = df_features.drop(['DOMSIDE'], axis=1)
     
     # Necessary columns for social file 
     cols_socio = ['PATNO','EDUCYRS']
