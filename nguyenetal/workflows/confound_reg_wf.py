@@ -5,9 +5,27 @@ from nipype.interfaces.utility import IdentityInterface, Function
 from nipype.interfaces.io import SelectFiles, DataSink
 import nipype.interfaces.fsl as fsl
 
-def get_ICA_motion_related_regressors(ica_directory, subject_id):
+def get_ICA_motion_related_regressors(
+    ica_directory : str, 
+    subject_id : str):
     ''' 
-    Creates the file containing only ICs classified as movement.
+    Creates the file containing only ICs classified as movement. ICA-AROMA outputs two different files: 
+    - a txt file containing the IDs of the components classified as motion
+    - a tsv file containing the timeseries of all components
+
+    We extract a dataframe containing only the timeseries of the motion classified components. 
+
+    Parameters
+    ----------
+    ica_directory : str
+        Directory where all subjects ICA results are stored
+    subject_id : str
+        Idx of the subject to extract results
+
+    Returns
+    -------
+    str 
+        Path to the file containing regressors.
     '''
     from glob import glob
     import pandas as pd 
@@ -20,9 +38,9 @@ def get_ICA_motion_related_regressors(ica_directory, subject_id):
     df_timeseries = pd.read_csv(ica_regressors_file, header=None, sep='\s+', index_col=None)
 
     with open(ica_idx_file, 'r') as f:
-        ic_list = [int(i)-1 for i in f.read().split(',')]
+        ic_list = [int(i)-1 for i in f.read().split(',')] # List of motion-classified ICs
 
-    df_motion_timeseries = df_timeseries.iloc[:,ic_list]
+    df_motion_timeseries = df_timeseries.iloc[:,ic_list] 
 
     df_motion_timeseries_fpath = join(os.getcwd(), f'sub-{subject_id}_motion-related-ic.tsv')
     df_motion_timeseries.to_csv(df_motion_timeseries_fpath, 
@@ -30,9 +48,34 @@ def get_ICA_motion_related_regressors(ica_directory, subject_id):
 
     return df_motion_timeseries_fpath
 
-def merge_confounds_files(motion_regressors_file, ica_file, wm_csf_file, subject_id):
+
+def merge_confounds_files(
+    motion_regressors_file : str, 
+    ica_file : str, 
+    wm_csf_file : str, 
+    subject_id : str
+) -> str:
     '''
     Merge all noise regressors to one single file.
+
+    Parameters
+    ----------
+    motion_regressors_file : str
+        filepath to motion regressors tsv file 
+
+    ica_file : str
+        filepath to IC-motion file
+
+    wm_csf_file : str
+        filepath to file containing wm and csf timeserie
+
+    subject_id : str
+        idx of the subject of interest
+
+    Returns
+    -------
+    str 
+        path to the merged tsv file
     '''
     import pandas as pd 
     from os.path import join 
@@ -56,19 +99,73 @@ class NoiseRegression_Pipeline:
     '''
     Class to create the noise regression pipeline. 
 
-    Parameters:
-    - subject_list : list of str, list of subjects to analyse.
-    - data_dir : str, path to data directory
-    - output_dir : str, path to output directory
-    - wm_csf_template : str, path to tsv file containing wm and csf time series (columns 'csf' and 'white_matter')
-    - motion_regressors_template : str, path to tsv file containing 6 affine motion regressors 
-    - func_file_template : path, Nipype SelectFiles template for confounds files
-    - include_ICA : bool, whether to use ICA regressors or not
-    - ica_directory : path, path to directory containing all subjects ICA outputs.
+    Attributes
+    ----------
+
+    subject_list : list of str
+        list of subjects to analyse
+
+    data_dir : str
+        path to data directory
+
+    output_dir : str
+        path to output directory
+
+    wm_csf_template : str
+        path to tsv file containing wm and csf time series (columns 'csf' and 'white_matter')
+
+    motion_regressors_template : str
+        path to tsv file containing 6 affine motion regressors 
+
+    func_file_template : str
+        Nipype SelectFiles template for confounds files
+
+    include_ICA : bool
+        whether to use ICA regressors or not. 
+
+    ica_directory : str
+        path to directory containing all subjects ICA outputs.
+
+    pipeline : nipype.Workflow
+        workflow to perform noise regression. 
     '''
-    def __init__(self, subject_list, data_dir, output_dir, 
-        wm_csf_template, motion_regressors_template, func_file_template,
-        include_ICA=False, ica_directory = ''):
+    def __init__(self, 
+        subject_list: list, 
+        data_dir : str, 
+        output_dir : str, 
+        wm_csf_template : str, 
+        motion_regressors_template : str, 
+        func_file_template : str,
+        include_ICA : bool =False, 
+        ica_directory : str = ''
+    ):
+        """"
+        Parameters
+        ----------
+        subject_list : list of str
+            list of subjects to analyse
+
+        data_dir : str
+            path to data directory
+
+        output_dir : str
+            path to output directory
+
+        wm_csf_template : str
+            path to tsv file containing wm and csf time series (columns 'csf' and 'white_matter')
+
+        motion_regressors_template : str
+            path to tsv file containing 6 affine motion regressors 
+
+        func_file_template : str
+            Nipype SelectFiles template for confounds files
+
+        include_ICA : bool
+            whether to use ICA regressors or not. 
+
+        ica_directory : str
+            path to directory containing all subjects ICA outputs.
+        """
 
         self.subject_list = subject_list
         self.data_dir = data_dir
@@ -84,6 +181,11 @@ class NoiseRegression_Pipeline:
     def get_filter_regressors_pipeline(self):
         '''
         Function to create Nipype workflow for noise regressors filtering if ICA is not performed. 
+
+        Returns 
+        -------
+        nipype.Workflow
+            workflow to perform noise regression. 
         '''
 
         workflow = Workflow('filter_reg', base_dir=os.path.join(self.output_dir, 'working_dir'))

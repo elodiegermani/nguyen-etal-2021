@@ -25,7 +25,9 @@ dict_clin_labels = {'AGE_AT_VISIT': 'Age',
 'RAWHITE': 'Caucasian',
 'RANOS': 'Other race',
 'EDUCYRS': 'Years of edu.',
-'HANDED': 'Handed',
+'HANDED_RIGHT': 'Right handed',
+'HANDED_LEFT': 'Left handed',
+'HANDED_BOTH': 'Ambidextrous',
 'V-DXDT': 'Time since diag.',
 'V-SXDT': 'Symptom duration',
 'DXTREMOR': 'Tremor',
@@ -34,7 +36,10 @@ dict_clin_labels = {'AGE_AT_VISIT': 'Age',
 'DXPOSINS': 'Postural Instability',
 'MCATOT': 'Baseline MoCA',
 'GDS_TOTAL': 'Baseline GDS',
-'UPDRS_TOT': 'Baseline MDS-UPDRS'}
+'UPDRS_TOT': 'Baseline MDS-UPDRS',
+'DOMSIDE_RIGHT': 'Dominant right',
+'DOMSIDE_LEFT': 'Dominant left',
+'DOMSIDE_BOTH': 'Dominant both'}
 
 def get_features_importance(model_file, roi_labels,
                   target, data, b_delta=False, importance_attr='coef_'):
@@ -84,6 +89,7 @@ def plot_features_importance(df_importance, n_features_plot):
                        orient='h')
 
     plt.legend(loc='lower right')
+    plt.tight_layout()
 
     return fig
 
@@ -132,9 +138,10 @@ def plot_brain_features_importance(df_importance, roi_labels, atlas, n_features)
 
     img_importance = _values_to_img(val_atlas_array, atlas_img)
     fig, ax = plt.subplots(3, 1, figsize=(8, 5))
-    brainX = plotting.plot_stat_map(img_importance, cmap='coolwarm', display_mode='x', cut_coords=4, alpha=0.95, axes=ax[0])
-    brainY = plotting.plot_stat_map(img_importance, cmap='coolwarm', display_mode='y', cut_coords=4, alpha=0.95, axes=ax[1])
-    brainZ = plotting.plot_stat_map(img_importance, cmap='coolwarm', display_mode='z', cut_coords=4, alpha=0.95, axes=ax[2])
+    brainX = plotting.plot_stat_map(img_importance, cmap='coolwarm', display_mode='x', cut_coords=4, alpha=0.95, axes=ax[0], vmax=1)
+    brainY = plotting.plot_stat_map(img_importance, cmap='coolwarm', display_mode='y', cut_coords=4, alpha=0.95, axes=ax[1], vmax=1)
+    brainZ = plotting.plot_stat_map(img_importance, cmap='coolwarm', display_mode='z', cut_coords=4, alpha=0.95, axes=ax[2], vmax=1)
+    plt.tight_layout()
 
     return fig
 
@@ -209,8 +216,14 @@ def plot_all_feature_importance(global_df, pipeline, specific):
                               )
 
             fig = plot_features_importance(df_importance,n_features_plot=10)
-            plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}.png')
-
+            if specific != None:
+                plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}{specific}.png')
+            else: 
+                plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}.png')
+            
             if pipeline != 'no_imaging_features':
                 fig_2 = plot_brain_features_importance(df_importance, roi_labels, best_atlas, n_features=10)
-                plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_maps_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}.png')
+                if specific != None:
+                    plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_maps_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}{specific}.png')
+                else:
+                    plt.savefig(f'./outputs/{pipeline}/figures/feature_importance_maps_prediction-{timepoint}_feature-{feature}_model-{best_model}_atlas-{best_atlas}.png')

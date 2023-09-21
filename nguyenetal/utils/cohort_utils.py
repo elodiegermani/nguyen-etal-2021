@@ -297,11 +297,17 @@ def get_fMRI_cohort(
 
     return df_fMRI_subset
 
-def to_1_decimal_str(f):
+def to_1_decimal_str(
+    f:float
+) -> str:
     return str(round(f, 1))
 
-def compute_summary_features(df, utils, timepoint='baseline', df_baseline=None,
-    index = {"RAWHITE":"% Caucasian",
+def compute_summary_features(
+    df:pd.DataFrame, 
+    utils:livingpark_utils.LivingParkUtils, 
+    timepoint:str='baseline', 
+    df_baseline : None | pd.DataFrame = None,
+    index : dict = {"RAWHITE":"% Caucasian",
         "RABLACK":"% African-American",
         "RAASIAN":"% Asian",
         'HISPLAT':"% Hispanic",
@@ -314,8 +320,28 @@ def compute_summary_features(df, utils, timepoint='baseline', df_baseline=None,
         'UPDRS_TOT_TIMEPOINT': 'Mean MDS-UPDRS at timepoint',
         'MCATOT': "Mean MoCA at baseline",
         'GDS_TOTAL': "Mean GDS at Baseline",
-        'NHY': "Mean Hoehn-Yahr stage"}):
-    
+        'NHY': "Mean Hoehn-Yahr stage"}
+) -> pd.DataFrame:
+    """Compute cohort summary features to compare with papers Table 1. 
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe
+    utils : livingpark_utils.LivingParkUtils
+        the notebook's LivingParkUtils instance
+    timepoint : str
+        timepoint of the cohort to compute summary measures (one of 'baseline', '1y', '2y' and '4y')
+    df_baseline : None | pd.DataFrame
+        required if timepoint other than baseline 
+    index : dict
+        columns names to input to new dataframe
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with summary metrics
+    """
     
     # Load necessary study files
     df_pd_history = load_ppmi_csv(utils, FILENAME_PD_HISTORY)
@@ -401,10 +427,27 @@ def compute_summary_features(df, utils, timepoint='baseline', df_baseline=None,
     return df_summary_values
 
 # How to deal with NaNs ? 
-def impute_mean(df, col_name, is_int=False):
-    '''
-    Replace NaNs with mean.
-    '''
+def impute_mean(
+    df:pd.DataFrame, 
+    col_name:str, 
+    is_int:bool=False
+) -> pd.DataFrame:
+    """Impute missing values with mean values.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe
+    col_name : str | list
+        columns to impute
+    is_int : bool
+        return the int mean value if column contains only int values
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with imputed missing values
+    """
     mean_value = df[col_name].mean()
     if is_int:
         mean_value = int(mean_value)
@@ -412,15 +455,56 @@ def impute_mean(df, col_name, is_int=False):
     
     return df
 
-def impute_zeros(df, col_name):
-    '''
-    Replace NaNs with 0s.
-    '''
+def impute_zeros(
+    df:pd.DataFrame, 
+    col_name:str
+) -> pd.DataFrame:
+    """Impute missing values with 0 values.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe
+    col_name : str | list
+        columns to impute
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with imputed missing values
+    """
+
     df[col_name].fillna(value=0, inplace=True)
     
     return df
 
-def get_features(df_baseline, utils, participants_list, timepoint='baseline', add_DOMSIDE=False):
+def get_features(
+    df_baseline:pd.DataFrame, 
+    utils:livingpark_utils.LivingParkUtils, 
+    participants_list:list, 
+    timepoint:str='baseline', 
+    add_DOMSIDE:bool=False
+) -> pd.DataFrame:
+    """Gather features to train machine learning models. 
+
+    Parameters
+    ----------
+    df_baseline : pd.DataFrame
+        input dataframe with baseline values
+    utils : livingpark_utils.LivingParkUtils
+        the notebook's LivingParkUtils instance
+    participants_list: list
+        list of participants to get features
+    timepoint : str
+        timepoint of the cohort to compute summary measures (one of 'baseline', '1y', '2y' and '4y')
+    add_DOMSIDE : bool
+        whether to include DOMSIDE column in the features
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with all features
+    """
     # Load necessary study files
     df_pd_history = load_ppmi_csv(utils, FILENAME_PD_HISTORY)
     df_demographics = load_ppmi_csv(utils, FILENAME_DEMOGRAPHICS)
@@ -512,7 +596,30 @@ def get_features(df_baseline, utils, participants_list, timepoint='baseline', ad
     
     return df_features
 
-def get_threshold(df_cohort_baseline, df_cohort_1y, df_cohort_2y, df_cohort_4y):
+def get_threshold(
+    df_cohort_baseline:pd.DataFrame, 
+    df_cohort_1y:pd.DataFrame,
+    df_cohort_2y::pd.DataFrame, 
+    df_cohort_4y::pd.DataFrame
+) -> int:
+    """Compute threshold to define high and low-severity groups.
+
+    Parameters
+    ----------
+    df_cohort_baseline : pd.DataFrame
+        input dataframe with baseline values
+    df_cohort_1y : pd.DataFrame
+        input dataframe with 1y values
+    df_cohort_2y : pd.DataFrame
+        input dataframe with 2y values
+    df_cohort_4y : pd.DataFrame
+        input dataframe with 4y values
+
+    Returns
+    -------
+    int
+        threshold representing the mean value of all UPDRS score across years and participants.
+    """
     df_longitudinal_scores = df_cohort_baseline[['PATNO', 'EVENT_ID', 'NP3TOT' ,'UPDRS_TOT']].copy()
     for i, df_pred in enumerate([df_cohort_1y, df_cohort_2y, df_cohort_4y]):
         if i < 2: 
@@ -520,7 +627,7 @@ def get_threshold(df_cohort_baseline, df_cohort_1y, df_cohort_2y, df_cohort_4y):
         else:
             y = 4
         df_longitudinal_scores[f'UPDRS_TOT_{y}Y'] = [df_pred['UPDRS_TOT'][df_pred['PATNO']==sub_id].tolist()[0] \
-                                              if sub_id in df_pred['PATNO'].tolist() else np.nan \
+                                             if sub_id in df_pred['PATNO'].tolist() else np.nan \
                                               for sub_id in df_cohort_baseline['PATNO'].tolist()]
     
         df_longitudinal_scores[f'NP3TOT_{y}Y'] = [df_pred['NP3TOT'][df_pred['PATNO']==sub_id].tolist()[0] \
@@ -531,8 +638,25 @@ def get_threshold(df_cohort_baseline, df_cohort_1y, df_cohort_2y, df_cohort_4y):
     
     return threshold
 
-def get_outcome_measures(df, threshold):
-    
+def get_outcome_measures(
+    df:pd.DataFrame, 
+    threshold:int
+) -> pd.DataFrame:
+
+    """Gather target score for the machine learning models
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        input dataframe with features
+    threshold : int
+        threshold to define high and low-severity groups.
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with outcome measures.
+    """
     df_outcome = df[['PATNO', 'EVENT_ID', 'NP3TOT' ,'UPDRS_TOT']].copy()
     df_outcome['SEVERITY'] = [1 if df_outcome['UPDRS_TOT'].iloc[i] > threshold else 0 for i in range(len(df_outcome))]
     

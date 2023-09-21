@@ -7,7 +7,25 @@ import nipype.interfaces.fsl as fsl
 import nipype.interfaces.afni as afni
 from nipype.algorithms.misc import Gunzip
 
-def get_timeseries_confounds_file(file_list, subject_id):
+def get_timeseries_confounds_file(
+	file_list: list, 
+	subject_id: str
+) -> str:
+	"""Function to read subjects confounds timeseries and create a dataframe with only white-matter and CSF. 
+
+	Parameters
+	----------
+	file_list : list
+		list of filenames containing subjects confounds 
+	subject_id : str
+		idx of the subject
+
+	Returns
+	-------
+	filename : str
+		filename of the created dataframe.
+
+	"""
 	import pandas as pd
 	from os.path import join
 	import os 
@@ -24,15 +42,48 @@ class Anatomical_Preprocessing:
 	'''
 	Class to create the anatomical preprocessing pipeline. 
 
-	Parameters:
-	- subject_list : list of str, list of subjects to analyse.
-	- data_dir : str, path to data directory
-	- anat_file_template : path, Nipype SelectFiles template for anatomic files
-	- output_dir : str, path to output directory
-	- software = str, FSL or AFNI 
+	Attributes
+	----------
+	subject_list : list of str 
+		list of subjects to analyse
+
+	data_dir : str 
+		path to data directory
+
+	anat_file_template : str 
+		Nipype SelectFiles template for anatomic files
+
+	output_dir : str
+		path to output directory
+
+	software : str
+		FSL or AFNI 
+
+	pipeline : nipype.Workflow
+		Workflow to perform anatomical preprocessing. 
 	'''
 
-	def __init__(self, subject_list, data_dir, anat_file_template, func_file_template, output_dir, software):
+	def __init__(self, 
+		subject_list : list, 
+		data_dir : str, 
+		anat_file_template : str, 
+		func_file_template : str, 
+		output_dir : str, 
+		software : str):
+		"""
+		Parameters
+		----------
+		subject_list : list of str 
+			list of subjects to analyse
+		data_dir : str 
+			path to data directory
+		anat_file_template : str 
+			Nipype SelectFiles template for anatomic files
+		output_dir : str
+			path to output directory
+		software = str
+			FSL or AFNI 
+		"""
 		self.subject_list = subject_list
 		self.data_dir = data_dir
 		self.anat_file_template = anat_file_template
@@ -48,6 +99,11 @@ class Anatomical_Preprocessing:
 	def get_anat_preproc_fsl_wf(self):
 		'''
 		Function to create Nipype workflow for extraction of WM and CSF time series. 
+
+		Returns 
+		-------
+		nipype.Workflow
+			Workflow to perform anatomical preprocessing with FSL software package functions. 
 		'''
 
 		workflow = Workflow('anat_preproc_wf_fsl', base_dir=os.path.join(self.output_dir, 'working_dir'))
@@ -122,6 +178,11 @@ class Anatomical_Preprocessing:
 	def get_anat_preproc_afni_wf(self):
 		'''
 		Function to create Nipype workflow for extraction of WM and CSF time series. 
+
+		Returns 
+		-------
+		nipype.Workflow
+			Workflow to perform anatomical preprocessing with AFNI software package functions. 
 		'''
 		workflow = Workflow('anat_preproc_wf_afni', base_dir=os.path.join(self.output_dir, 'working_dir'))
 

@@ -9,7 +9,38 @@ from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.io import SelectFiles, DataSink
 
 
-def get_mean_ROI_values(feature_image, feature, subject_id, cereb_atlas, striatum_atlas):
+def get_mean_ROI_values(
+    feature_image : str, 
+    feature : str, 
+    subject_id : str, 
+    cereb_atlas : str, 
+    striatum_atlas : str
+) -> list:
+    """Computes mean value per ROI for an image based on an atlas parcellation.
+
+    Parameters
+    ----------
+    feature_image : str
+        path to the image containing features to average on ROIs
+
+    feature : str
+        which feature (fALFF, ALFF or ReHo)
+
+    subject_id : str
+        idx of the subject of interest
+
+    cereb_atlas : str 
+        path to cerebellar atlas 
+
+    striatum_atlas : str
+        path to striatal atlas
+
+    Returns
+    -------
+    list 
+        List of paths to files containing the mean values per ROI for each atlas. 
+    
+    """
     from nilearn import regions, image, datasets
     import numpy as np
     import pandas as pd
@@ -17,8 +48,6 @@ def get_mean_ROI_values(feature_image, feature, subject_id, cereb_atlas, striatu
 
     basc_atlas = datasets.fetch_atlas_basc_multiscale_2015()
     schaefer_atlas = datasets.fetch_atlas_schaefer_2018(n_rois=100, yeo_networks=7, resolution_mm=2)
-    #cereb_atlas = './inputs/atlases/Cerebellum-MNIfnirt-maxprob-thr25-2mm.nii.gz'
-    #striatum_atlas = './inputs/atlases/striatum-con-label-thr25-7sub-2mm.nii.gz'
     
     # Paths to brain atlases
     atlas_dict = {'basc197': basc_atlas['scale197'],
@@ -31,7 +60,7 @@ def get_mean_ROI_values(feature_image, feature, subject_id, cereb_atlas, striatu
     for atlas in atlas_dict.keys():
         atlas_path = atlas_dict[atlas]
 
-        if atlas == 'schaefer':
+        if atlas == 'schaefer': # First compute for Schaefer ROI and then for Cerebellar and Striatal
             output_list = []
             atlas_img = image.load_img(atlas_path[0]['maps'])
             cereb_atlas_img = image.load_img(atlas_path[1])
@@ -75,20 +104,76 @@ class StaticMeasures_Pipeline:
     '''
     Class to build pipeline to compute static ALFF, fALFF, and ReHo for an fMRI image.
 
-    Parameters:
-    - subject_list : list of str, list of subjects to analyse.
-    - data_dir : str, path to data directory
-    - output_dir : str, path to output directory
-    - mask_file_template : path, Nipype SelectFiles template for mask files
-    - func_file_template : path, Nipype SelectFiles template for confounds files
-    - high_pass_filter : float, threshold for high pass filtering
-    - low_pass_filter : float, threshold for low pass filtering
-    - cluster_size : int, number of neighbor to take into account for ReHo computation
+    Attributes
+    ----------
+    subject_list : list of str
+        list of subjects to analyse.
+
+    data_dir : str
+        path to data directory
+
+    output_dir : str
+        path to output directory
+
+    mask_file_template : str
+        Nipype SelectFiles template for mask files
+
+    func_file_template : str
+        Nipype SelectFiles template for confounds files
+
+    high_pass_filter : float
+        threshold for high pass filtering
+
+    low_pass_filter : float
+        threshold for low pass filtering
+
+    cluster_size : int
+        number of neighbor to take into account for ReHo computation
+
+    pipeline : nipype.Workflow
+        workflow to compute static ALFF, fALFF and ReHO for an image
     '''
 
-    def __init__(self, subject_list, data_dir, output_dir, 
-        mask_file_template, func_file_template, cereb_atlas, striatum_atlas,
-        high_pass_filter, low_pass_filter, cluster_size):
+    def __init__(self, 
+        subject_list: list, 
+        data_dir : str, 
+        output_dir : str, 
+        mask_file_template : str, 
+        func_file_template : str, 
+        cereb_atlas : str, 
+        striatum_atlas : str,
+        high_pass_filter : float, 
+        low_pass_filter : float, 
+        cluster_size : int
+    ):
+        """
+        Parameters
+        ----------
+
+        subject_list : list of str
+            list of subjects to analyse.
+
+        data_dir : str
+            path to data directory
+
+        output_dir : str
+            path to output directory
+
+        mask_file_template : str
+            Nipype SelectFiles template for mask files
+
+        func_file_template : str
+            Nipype SelectFiles template for confounds files
+
+        high_pass_filter : float
+            threshold for high pass filtering
+
+        low_pass_filter : float
+            threshold for low pass filtering
+
+        cluster_size : int
+            number of neighbor to take into account for ReHo computation
+        """
 
         self.subject_list = subject_list
         self.data_dir = data_dir
@@ -104,6 +189,14 @@ class StaticMeasures_Pipeline:
         self.pipeline = self.get_static_measures_pipeline()
 
     def get_static_measures_pipeline(self):
+        """Creates the workflow to compute ALFF, ReHo and fALFF on images. 
+
+        Returns
+        -------
+        nipype.Workflow
+            workflow to compute ALFF, ReHo and fALFF on images.
+
+        """
         output_dir = os.path.realpath(self.output_dir)
 
         if self.cluster_size not in [7, 19, 27]:

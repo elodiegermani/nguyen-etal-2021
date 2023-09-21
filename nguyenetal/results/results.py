@@ -297,4 +297,7 @@ def plot_pred_real(pipeline, global_df, specific=None):
             ax.set_title(f'Prediction of {timepoint_dict[timepoint]} severity without imaging features')
             
         plt.tight_layout()
-        plt.savefig(f'./outputs/{pipeline}/figures/plot_pred-target_{timepoint}.png') 
+        if specific != None: 
+            plt.savefig(f'./outputs/{pipeline}/figures/plot_pred-target_{timepoint}{specific}.png') 
+        else: 
+            plt.savefig(f'./outputs/{pipeline}/figures/plot_pred-target_{timepoint}.png') 

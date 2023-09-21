@@ -1,3 +1,6 @@
+""" Workflow to perform preprocessing of functional images as part of the reproduction pipeline.
+"""
+
 from nipype.interfaces.ants import Registration
 from nipype.interfaces.ants import ApplyTransforms
 from nipype import Node, Workflow, MapNode
@@ -8,8 +11,25 @@ from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.io import SelectFiles, DataSink
 from os.path import join
 
-def select_volume(filename, which):
-    """Return the middle index of a file
+def select_volume(
+	filename : str, 
+	which : str
+) -> int :
+    """Return the index of a file
+
+    Parameters
+    ----------
+
+    filename : str
+    	filename of the nifti image
+    which : str
+		one of 'first' or 'middle'
+
+	Returns
+	-------
+
+	int 
+		idx of the "which" volume in the image.
     """
     from nibabel import load
     import numpy as np
@@ -24,9 +44,37 @@ def select_volume(filename, which):
     return idx
 
 class Functional_Preprocessing():
+	"""
+	Class representing the workflow used to perform preprocessing of the functional images as part of the reproduction pipeline.
 
-	def __init__(self, data_dir, 
-		output_dir, subject_list):
+	Attributes
+	----------
+	data_dir : str
+		path to the directory containing raw images
+	output_dir : str
+		path to the directory where to store results
+	subject_list : list
+		list of subjects for which to analyse the images
+	pipeline : nipype.Workflow
+		Functional preprocessing workflow.
+	"""
+
+	def __init__(self, 
+		data_dir : str, 
+		output_dir : str, 
+		subject_list : list
+	):
+	"""
+	Parameters
+	----------
+
+	data_dir : str
+		path to the directory containing raw images
+	output_dir : str
+		path to the directory where to store results
+	subject_list : list
+		list of subjects for which to analyse the images
+	"""
 
 		self.data_dir = data_dir
 		self.output_dir = output_dir
@@ -34,9 +82,22 @@ class Functional_Preprocessing():
 
 		self.pipeline = self.get_preprocessing_wf()
 
-	def get_reg_wf(self, reg_type='func', name='func_reg_wf'): 
+	def get_reg_wf(self, reg_type:str='func', name:str='func_reg_wf'): 
 	    """
 	    Return the registration workflow for direct EPI-to-template registration. 
+
+		Parameters
+		----------
+		reg_type : str
+			Type of the registration 
+		name : str
+			Name of the workflow 
+
+		Returns
+		-------
+		nipype.Workflow 
+			Workflow for EPI-to-template registration
+
 	    """
 	    # fetch input 
 	    inputnode = Node(IdentityInterface(fields=['in_file', 'template']),
@@ -117,6 +178,15 @@ class Functional_Preprocessing():
 	    return reg_wf 
 
 	def get_preprocessing_wf(self):
+		"""
+		Function to create the preprocessing workflow.
+
+		Returns
+		-------
+		nipype.Workflow
+			Functional preprocessing workflow.
+
+		"""
 		# IdentityInterface node - allows to iterate over subjects and runs
 	    info_source = Node(
 	        IdentityInterface(fields=['subject_id']),
@@ -126,7 +196,7 @@ class Functional_Preprocessing():
 	        ('subject_id', self.subject_list)
 	    ]
 	    
-	    # Templates to select files node
+	    # Templates to select files node 
 	    file_templates = {
 	        'anat': join(
 	            'sub-{subject_id}', 'anat', 'sub-{subject_id}_T1w.nii.gz'
@@ -148,49 +218,33 @@ class Functional_Preprocessing():
 	        name='data_sink',
 	    )
 
+	    # Extract a reference volume from 4D image
 	    extract_ref = Node(
 	        interface=fsl.ExtractROI(t_size=1),
 	        name='extractref')
 
+	    # Motion correction with McFLIRT
 	    motion_correction = Node(
 	        fsl.MCFLIRT(dof=6,
 	        			save_plots=True),
 	        name='motion_correction'
 	    )
 
+	    # Skullstripping
 	    skullstrip_func = Node(
 	        afni.Automask(outputtype='NIFTI_GZ'),
 	        name='skullstrip_func'
 	    )
 	    
+	    # Registration 
 	    non_linear_registration_func = self.get_reg_wf('func', 'func_reg_wf')
 	    non_linear_registration_func.inputs.inputnode.template=fsl.Info.standard_image('MNI152_T1_2mm_brain.nii.gz')
-
-	    ica_aroma = Node(
-	        fsl.ICA_AROMA(out_dir=self.output_dir), 
-	        name='ica_aroma'
-	    )
-
-	    skullstrip_anat = Node(
-	        fsl.BET(output_type='NIFTI_GZ'),
-	        name='skullstrip_anat'
-	    )
-
-	    non_linear_registration_anat = self.get_reg_wf('anat', 'anat_reg_wf')
-	    non_linear_registration_anat.inputs.inputnode.template=fsl.Info.standard_image('MNI152_T1_2mm_brain.nii.gz')
-
-	    segment = Node(
-	        fsl.FAST(segments=True, number_classes=3),
-	        name='segment'
-	    )
-
-	    binarize = Node(
-	        fsl.ImageMaths(op_string='-nan -thr 0.5 -bin'), name='binarize')
 	    
+	    # Global workflow 
 	    preproc_wf = Workflow(name='preproc_wf')
 	    preproc_wf.base_dir = self.output_dir
 
-	    preproc_wf.connect(
+	    preproc_wf.connect( # Connection between nodes
 	        [
 	            (info_source, select_files, [('subject_id', 'subject_id')]),
 	            (select_files, motion_correction, [('func', 'in_file')]),
@@ -199,22 +253,10 @@ class Functional_Preprocessing():
 	            (extract_ref, motion_correction, [('roi_file', 'ref_file')]),
 	            (motion_correction, skullstrip_func, [('out_file', 'in_file')]),
 	            (skullstrip_func, non_linear_registration_func, [('brain_file', 'inputnode.in_file')]),
-	            #(select_files, skullstrip_anat, [('anat', 'in_file')]),
-	            #(select_files, brain_extraction_anat, [('anat', 'in_file')]),
-	            #(skullstrip_anat, segment, [('out_file', 'in_files')]),
-	            #(skullstrip_anat, non_linear_registration_anat, [('out_file', 'inputnode.in_file')]),
-	            #(non_linear_registration_anat, segment, [('outputnode.registered_image', 'in_files')]),
-	            #(segment, binarize, [('partial_volume_files', pickindex, 2), 'in_file']),
-	            #(non_linear_registration_func, ica_aroma, [('outputnode.registered_image', 'in_file')]),
-	            #(motion_correction, ica_aroma, [('par_file', 'motion_parameters')]),
 	            (motion_correction, data_sink, [('par_file', 'func_preproc.@motion_param')]),
-	            #(non_linear_registration_anat, data_sink, [('outputnode.registered_image', 'func_preproc.@registered_anat')]),
 	            (non_linear_registration_func, data_sink, [('outputnode.registered_image', 'func_preproc.@registered_func')]),
-	            #(ica_aroma, data_sink,[('nonaggr_denoised_file', 'func_preproc.@nonaggr_file'),
-	            #                      ('out_dir', 'func_preproc.@result_dir')]),
 	            (non_linear_registration_func, data_sink, [('outputnode.warped_image', 'func_preproc.@warped_image'),
 	            											('outputnode.transform', 'func_preproc.@transform')]),
-	            #(segment, data_sink, [('partial_volume_files', 'func_preproc.@segmap')])
 	        ]
 	    )
 

@@ -362,7 +362,6 @@ def create_reho(wf_name):
 
     Examples
     --------
-    >>> from CPAC import reho
     >>> wf = reho.create_reho('reho')
     >>> wf.inputs.inputspec.rest_res_filt = '/home/data/Project/subject/func/rest_res_filt.nii.gz'  # doctest: +SKIP
     >>> wf.inputs.inputspec.rest_mask = '/home/data/Project/subject/func/rest_mask.nii.gz'  # doctest: +SKIP
