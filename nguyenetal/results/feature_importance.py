@@ -61,7 +61,9 @@ def get_features_importance(model_file, roi_labels,
         features_array[i,:] = getattr(model, importance_attr)
 
     df_importance = pd.DataFrame(index=data.columns, columns=['Median Feature Importance', 'Correlation'])
+    # Compute median feature importance across all splits for each feature ?
     df_importance['Feature Importance'] = np.abs(np.median(features_array, 0))
+    # Divide by the max value of the feature importance ???
     df_importance['Feature Importance'] /= df_importance['Feature Importance'].abs().max()
     
     if importance_attr == 'feature_importances_':

@@ -233,6 +233,63 @@ class RegressorPanel:
 
         return result_dict, cv_score_dict
 
+    def run_single_model_permutation(self, model_name, n_iters=100, n_jobs=1):
+        """
+        Run a random search on one model
+
+        :param model_name: key referring to one of the models in self.model_dict
+        :type model_name: str
+        :param n_iters: number of iterations in the random search
+        :type n_iters: int
+        :param n_jobs: number of parallel jobs
+        :type n_jobs: int
+        :return: result_dict: dictionary containing mean train, val, and test RMSE and Rsquare; cv_score_dict:
+        dictionary containing the exhaustive results returned by sklearn.model_selection.cross_validate
+        :rtype: dict, dict
+        """
+        if model_name not in self.model_dict.keys():
+            raise ValueError('Incorrect model name: {}'.format(model_name)) # Test for name in model dictionnary
+
+        pipe = copy.deepcopy(self.preprocessing)
+
+        if self.feature_selection is not None: # If feature selection ? 
+            selector_name = self.feature_selection[0].__class__.__name__
+            pipe.steps.append((selector_name, self.feature_selection[0]))
+
+        pipe.steps.append((model_name, self.model_dict[model_name][0]))
+
+        param_dict_orig = self.model_dict[model_name][1]
+        # Append the model name to the hyperparam keys so that RandomSearch can recognize them
+        param_dict = {model_name + '__' + key: val for key, val in param_dict_orig.items()}
+
+        if self.feature_selection is not None:
+            select_orig_param_dict = self.feature_selection[1]
+            select_param_dict = {selector_name + '__' + key: val for key, val in select_orig_param_dict.items()}
+            param_dict = dict(param_dict, **select_param_dict)
+
+        score_dict = {'rmse': metrics.make_scorer(rmse,
+                                                   greater_is_better=False),
+                       'rsquare': metrics.make_scorer(rsquare,
+                                                      greater_is_better=True)}
+
+        random = model_selection.RandomizedSearchCV(pipe, param_dict,
+                                                    scoring=score_dict,
+                                                    cv=self.inner,
+                                                    n_iter=n_iters,
+                                                    return_train_score=True,
+                                                    n_jobs=n_jobs,
+                                                    random_state=self.random_seed,
+                                                    refit=self.metric_rs)
+
+        score, perm_scores, pvalue = model_selection.permutation_test_score(
+                                            random, X=self.data, y=self.target, cv=self.outer,
+                                          groups=None, n_jobs=n_jobs,
+                                          scoring='neg_root_mean_squared_error', n_permutations=1000
+                                        )
+
+
+        return score, perm_scores, pvalue
+
     def run_all_models(self, n_iters=100, verbose=True, n_jobs=1):
         """
         Run random hyperparam searches on all models
@@ -293,5 +350,56 @@ class RegressorPanel:
 
         if self.output_dir:
             df_summary.to_csv(f'{self.output_dir}/summary.csv')
+
+        return df_summary
+
+    def run_all_models_permutation(self, n_iters=100, verbose=True, n_jobs=1):
+        """
+        Run random hyperparam searches on all models
+
+        :param n_iters: number of random search iterations
+        :type n_iters: int
+        :param verbose: flag for verbose output
+        :type verbose: bool
+        :param n_jobs: number of parallel jobs
+        :type n_jobs: int
+        :return: result dataframe
+        :rtype: pandas.DataFrame
+        """
+
+        if verbose:
+            #print('Writing results to {}'.format(self.strOutputDir))
+            if hasattr(self.outer, 'n_splits'):
+                n_outer_splits = self.outer.n_splits
+            elif hasattr(self.outer, 'get_n_splits'):
+                n_outer_splits = self.outer.get_n_splits(self.data)
+            elif hasattr(self.outer, '__len__'):
+                n_outer_splits = self.outer.__len__()
+            else:
+                n_outer_splits = '?'
+
+            if hasattr(self.inner, 'n_splits'):
+                n_inner_splits = self.inner.n_splits
+            elif hasattr(self.inner, '__len__'):
+                n_inner_splits = self.inner.__len__()
+            else:
+                n_inner_splits = '?'
+                
+            print('Using {} outer folds and {} inner folds'.format(n_outer_splits, n_inner_splits))
+            print('{} subjects, {} features'.format(self.data.shape[0], self.data.shape[1]))
+
+        result_all_dict = {}
+
+        for model_name, model_tupple in self.model_dict.items():
+            if verbose:
+                print('Training model {}'.format(model_name), flush=True)
+            score, perm_scores, pvalue = self.run_single_model_permutation(model_name, n_iters, n_jobs)
+            result_all_dict[model_name] = [score, pvalue]
+            
+
+        df_summary = pd.DataFrame(result_all_dict).T
+
+        if self.output_dir:
+            df_summary.to_csv(f'{self.output_dir}/summary_permutations.csv')
 
         return df_summary

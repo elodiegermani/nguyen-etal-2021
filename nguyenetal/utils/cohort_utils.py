@@ -599,8 +599,8 @@ def get_features(
 def get_threshold(
     df_cohort_baseline:pd.DataFrame, 
     df_cohort_1y:pd.DataFrame,
-    df_cohort_2y::pd.DataFrame, 
-    df_cohort_4y::pd.DataFrame
+    df_cohort_2y:pd.DataFrame, 
+    df_cohort_4y:pd.DataFrame
 ) -> int:
     """Compute threshold to define high and low-severity groups.
 
