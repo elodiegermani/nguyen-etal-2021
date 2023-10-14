@@ -179,78 +179,6 @@ class Functional_Preprocessing():
 		
 		return reg_wf 
 
-	def get_mask_wf(self):
-		"""
-		Function to create the preprocessing workflow to create the mask.
-
-		Returns
-		-------
-		nipype.Workflow
-			Functional preprocessing workflow.
-
-		"""
-		# IdentityInterface node - allows to iterate over subjects and runs
-		info_source = Node(
-			IdentityInterface(fields=['subject_id']),
-			name='info_source'
-		)
-		info_source.iterables = [
-			('subject_id', self.subject_list)
-		]
-		
-		# Templates to select files node 
-		file_templates = {
-			'mask': join(
-				'func_preproc', '_subject_id_{subject_id}', 'sub-{subject_id}_task-rest_bold_mcf_mask.nii.gz'
-				),
-			'transform': join(
-				'func_preproc', '_subject_id_{subject_id}', 'func2template_Composite.h5'
-				),
-		}
-		
-		# SelectFiles node - to select necessary files
-		select_files = Node(
-			SelectFiles(file_templates, base_directory = self.output_dir),
-			name='select_files'
-		)
-		
-		# DataSink Node - store the wanted results in the wanted repository
-		data_sink = Node(
-			DataSink(base_directory = self.output_dir),
-			name='data_sink',
-		)
-
-		apply_trans_mask = Node(ApplyTransforms(args='--float',
-										input_image_type=0,
-										interpolation='NearestNeighbor',
-										invert_transform_flags=[False],
-										num_threads=1,
-										terminal_output='file'), 
-								name='apply_trans_mask')
-
-		apply_trans_mask.inputs.reference_image = fsl.Info.standard_image('MNI152_T1_2mm_brain.nii.gz')
-
-		dilate_mask = Node(fsl.DilateImage(kernel_shape='3D',
-											operation='max'), 
-								name='dilate_mask')
-
-		# Global workflow 
-		mask_wf = Workflow(name='mask_wf')
-		mask_wf.base_dir = self.output_dir
-
-		mask_wf.connect( # Connection between nodes
-			[
-				(info_source, select_files, [('subject_id', 'subject_id')]),
-				(select_files, apply_trans_mask, [('mask', 'input_image'),
-													('transform', 'transforms')]),
-				(apply_trans_mask, dilate_mask, [('output_image', 'in_file')]),
-				(dilate_mask, data_sink, [('out_file', 'mask.@reg_mask')])
-			]
-
-		)
-
-		return mask_wf
-
 	def get_preprocessing_wf(self):
 		"""
 		Function to create the preprocessing workflow.
@@ -292,6 +220,8 @@ class Functional_Preprocessing():
 			name='data_sink',
 		)
 
+		data_sink.inputs.substitutions = [('_subject_id_', 'sub-')]
+
 		# Extract a reference volume from 4D image
 		extract_ref = Node(
 			interface=fsl.ExtractROI(t_size=1),
@@ -314,6 +244,13 @@ class Functional_Preprocessing():
 		non_linear_registration_func = self.get_reg_wf('func', 'func_reg_wf')
 		non_linear_registration_func.inputs.inputnode.template=fsl.Info.standard_image('MNI152_T1_2mm_brain.nii.gz')
 		
+
+		# Compute mask after preprocessing 
+		# Skullstripping
+		mask_func = Node(
+			afni.Automask(outputtype='NIFTI_GZ'),
+			name='mask_func'
+		)
 		# Global workflow 
 		preproc_wf = Workflow(name='preproc_wf')
 		preproc_wf.base_dir = self.output_dir
@@ -327,7 +264,9 @@ class Functional_Preprocessing():
 				(extract_ref, motion_correction, [('roi_file', 'ref_file')]),
 				(motion_correction, skullstrip_func, [('out_file', 'in_file')]),
 				(skullstrip_func, non_linear_registration_func, [('brain_file', 'inputnode.in_file')]),
-				(skullstrip_func, data_sink, [('out_file', 'func_preproc.@mask')]),
+				(non_linear_registration_func, mask_func, [('outputnode.registered_image', 'in_file')]),
+				(mask_func, data_sink, [('out_file', 'func_preproc.@mask')]),
+				(skullstrip_func, data_sink, [('out_file', 'func_preproc.@skullstriped')]),
 				(motion_correction, data_sink, [('par_file', 'func_preproc.@motion_param')]),
 				(non_linear_registration_func, data_sink, [('outputnode.registered_image', 'func_preproc.@registered_func')]),
 				(non_linear_registration_func, data_sink, [('outputnode.warped_image', 'func_preproc.@warped_image'),

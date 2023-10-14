@@ -1,17 +1,17 @@
 import pandas as pd
 import os
 
-def save_features(pipeline, features_dict, outcome_dict, specific=None):
+def save_features(pipeline, features_dict, outcome_dict, specific=None, features_dir='features'):
     for timepoint in list(features_dict.keys()):
         for atlas in ['schaefer', 'basc197', 'basc444']:
-            for feature in ['falff', 'ReHo']:
+            for feature in ['alff', 'falff', 'ReHo']:
                 
                 df_features = features_dict[timepoint]
                 df_outcome = outcome_dict[timepoint]
     
                 if pipeline != 'no_imaging_features':
                     subjects_cohort = [int(i) for i in df_features.index.tolist()]
-                    file_list = [f'./outputs/{pipeline}/features/sub-{sub}/sub-{sub}_{feature}_atlas-{atlas}.csv'\
+                    file_list = [f'./outputs/{pipeline}/{features_dir}/sub-{sub}/sub-{sub}_{feature}_atlas-{atlas}.csv'\
                                  for sub in subjects_cohort]
                     
                     df_img_features = pd.DataFrame()

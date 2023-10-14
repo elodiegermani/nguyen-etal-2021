@@ -143,7 +143,7 @@ def prediction_results(df, threshold, select_across='folds'):
                 best_model_df = pd.concat([best_model_df, model_atlas_summary_df])
 
         best_model_df['best_model'] = [0 for i in range(len(best_model_df))]
-        best_model_df['best_model'][best_model_df['val_rmse'] == np.min(best_model_df['val_rmse'])] = 1
+        best_model_df['best_model'][best_model_df['r2'] == np.max(best_model_df['r2'])] = 1
 
         scores_df = best_model_df[best_model_df['best_model']==1]
         scores_df = scores_df.drop(['val_rmse', 'val_r2'], axis=1)
@@ -157,6 +157,7 @@ timepoint_dict = {'baseline':'Baseline',
                  '4y': 'Year 4'}
 
 feature_dict = {'falff':'fALFF',
+                'alff':'ALFF',
                'ReHo':'ReHo'}
 
 atlas_dict = {'schaefer':'Schaefer', 
@@ -175,7 +176,7 @@ def plot_results_table(pipeline, original_df_file=None, specific=None, display='
                                         'PPV', 'NPV', 'Spec.','Sens.'])
         
     for timepoint in ['baseline', '1y', '2y', '4y']:
-        for feature in ['falff', 'ReHo']:
+        for feature in ['alff', 'falff', 'ReHo']:
 
             if original_df_file != None:
                 original_df = pd.read_csv(original_df_file)
