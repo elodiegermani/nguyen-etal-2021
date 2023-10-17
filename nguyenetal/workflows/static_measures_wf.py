@@ -127,6 +127,9 @@ def get_zscore(
         path to z-score file
     '''
 
+    from nipype.pipeline.engine import  Node
+    from nipype.interfaces.fsl import ImageStats, ImageMaths
+
     mean_val = Node(ImageStats(
         in_file = feature_image, 
         op_string = '-m', 
@@ -143,15 +146,19 @@ def get_zscore(
 
     std = std_val.run().outputs.out_stat
 
-    normalize = Node(ImageMaths(
-        in_file = feature_image,
-        mask_file = mask,
-        op_string = f'-sub {mean} -div {std}'), 
-        name = 'normalize')
+    # normalize = Node(ImageMaths(
+    #     in_file = feature_image,
+    #     mask_file = mask,
+    #     op_string = f'-sub {mean} -div {std}'), 
+    #     name = 'normalize')
 
-    z_score_image = normalize.run().outputs
+    # z_score_image = normalize.run().outputs
 
-    return z_score_image
+    op_string = f'-sub {mean} -div {std}'
+
+    print(op_string)
+
+    return op_string
 
 class StaticMeasures_Pipeline:
     '''
@@ -283,19 +290,28 @@ class StaticMeasures_Pipeline:
         normalize_wf_alff = Node(Function(
             function=get_zscore,
             input_names = ['feature_image', 'mask'],
-            output_names = ['z_score_image']), 
+            output_names = ['op_string']), 
         name='normalize_wf_alff')
+
+        normalize_alff = Node(ImageMaths(), 
+            name = 'normalize_alff')
+
+        normalize_falff = Node(ImageMaths(), 
+            name = 'normalize_falff')
+
+        normalize_reho = Node(ImageMaths(), 
+            name = 'normalize_reho')
 
         normalize_wf_falff = Node(Function(
             function=get_zscore,
             input_names = ['feature_image', 'mask'],
-            output_names = ['z_score_image']), 
+            output_names = ['op_string']), 
         name='normalize_wf_falff')
 
         normalize_wf_reho = Node(Function(
             function=get_zscore,
             input_names = ['feature_image', 'mask'],
-            output_names = ['z_score_image']), 
+            output_names = ['op_string']), 
         name='normalize_wf_reho')
 
         # Compute mean regional values
@@ -335,9 +351,9 @@ class StaticMeasures_Pipeline:
                 output_names=['df_list']), 
             name='compute_roi_measures_zalff')
 
-        compute_roi_measures_alff.inputs.feature = 'zalff'
-        compute_roi_measures_alff.inputs.cereb_atlas = self.cereb_atlas
-        compute_roi_measures_alff.inputs.striatum_atlas = self.striatum_atlas
+        compute_roi_measures_zalff.inputs.feature = 'zalff'
+        compute_roi_measures_zalff.inputs.cereb_atlas = self.cereb_atlas
+        compute_roi_measures_zalff.inputs.striatum_atlas = self.striatum_atlas
 
         compute_roi_measures_zfalff = Node(
             Function(function=get_mean_ROI_values, 
@@ -345,9 +361,9 @@ class StaticMeasures_Pipeline:
                 output_names=['df_list']), 
             name='compute_roi_measures_zfalff')
 
-        compute_roi_measures_falff.inputs.feature = 'zfalff'
-        compute_roi_measures_falff.inputs.cereb_atlas = self.cereb_atlas
-        compute_roi_measures_falff.inputs.striatum_atlas = self.striatum_atlas
+        compute_roi_measures_zfalff.inputs.feature = 'zfalff'
+        compute_roi_measures_zfalff.inputs.cereb_atlas = self.cereb_atlas
+        compute_roi_measures_zfalff.inputs.striatum_atlas = self.striatum_atlas
 
         compute_roi_measures_zreho = Node(
             Function(function=get_mean_ROI_values, 
@@ -355,9 +371,9 @@ class StaticMeasures_Pipeline:
                 output_names=['df_list']), 
             name='compute_roi_measures_zreho')
 
-        compute_roi_measures_reho.inputs.feature = 'zReHo'
-        compute_roi_measures_reho.inputs.cereb_atlas = self.cereb_atlas
-        compute_roi_measures_reho.inputs.striatum_atlas = self.striatum_atlas
+        compute_roi_measures_zreho.inputs.feature = 'zReHo'
+        compute_roi_measures_zreho.inputs.cereb_atlas = self.cereb_atlas
+        compute_roi_measures_zreho.inputs.striatum_atlas = self.striatum_atlas
 
         # Copy outputs into a user-friendly location
         datasink = Node(DataSink(base_directory=self.output_dir, remove_dest_dir=True), name='datasink')
@@ -380,26 +396,50 @@ class StaticMeasures_Pipeline:
                 [('outputspec.alff_img', 'feature_image')]),
             (select_files, normalize_wf_alff, 
                 [('mask', 'mask')]),
+            (alff_workflow, normalize_alff, 
+                [('outputspec.alff_img', 'in_file')]),
+            (select_files, normalize_alff, 
+                [('mask', 'mask_file')]),
+            (normalize_wf_alff, normalize_alff, 
+                [('op_string', 'op_string')]),
+
             (alff_workflow, normalize_wf_falff, 
                 [('outputspec.falff_img', 'feature_image')]),
             (select_files, normalize_wf_falff, 
                 [('mask', 'mask')]),
-            (alff_workflow, normalize_wf_reho, 
+            (alff_workflow, normalize_falff, 
+                [('outputspec.falff_img', 'in_file')]),
+            (select_files, normalize_falff, 
+                [('mask', 'mask_file')]),
+            (normalize_wf_falff, normalize_falff, 
+                [('op_string', 'op_string')]),
+
+            (reho_workflow, normalize_wf_reho, 
                 [('outputspec.raw_reho_map', 'feature_image')]),
             (select_files, normalize_wf_reho, 
                 [('mask', 'mask')]),
+            (reho_workflow, normalize_reho, 
+                [('outputspec.raw_reho_map', 'in_file')]),
+            (select_files, normalize_reho, 
+                [('mask', 'mask_file')]),
+            (normalize_wf_reho, normalize_reho, 
+                [('op_string', 'op_string')]),
+
             (info_source, compute_roi_measures_zalff, 
                 [('subject_id', 'subject_id')]),
-            (normalize_wf_alff, compute_roi_measures_zalff, 
-                [('z_score_image', 'feature_image')]),
+            (normalize_alff, compute_roi_measures_zalff, 
+                [('out_file', 'feature_image')]),
+
             (info_source, compute_roi_measures_zfalff, 
                 [('subject_id', 'subject_id')]),
-            (normalize_wf_falff, compute_roi_measures_zfalff,
-                [('z_score_image', 'feature_image')]),
+            (normalize_falff, compute_roi_measures_zfalff,
+                [('out_file', 'feature_image')]),
+
             (info_source, compute_roi_measures_zreho, 
                 [('subject_id', 'subject_id')]),
-            (normalize_wf_reho, compute_roi_measures_zreho, 
-                [('z_score_image', 'feature_image')]),
+            (normalize_reho, compute_roi_measures_zreho, 
+                [('out_file', 'feature_image')]),
+
             (compute_roi_measures_zalff, datasink, 
                 [('df_list', 'features.@zalff_atlas')]),
             (compute_roi_measures_zfalff, datasink, 
@@ -414,7 +454,7 @@ class StaticMeasures_Pipeline:
                 [('outputspec.alff_img', 'feature_image')]),
             (alff_workflow, compute_roi_measures_falff, 
                 [('outputspec.falff_img', 'feature_image')]),
-            (alff_workflow, compute_roi_measures_reho, 
+            (reho_workflow, compute_roi_measures_reho, 
                 [('outputspec.raw_reho_map', 'feature_image')]),
             (info_source, compute_roi_measures_alff, 
                 [('subject_id', 'subject_id')]),

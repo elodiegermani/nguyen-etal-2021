@@ -158,7 +158,10 @@ timepoint_dict = {'baseline':'Baseline',
 
 feature_dict = {'falff':'fALFF',
                 'alff':'ALFF',
-               'ReHo':'ReHo'}
+               'ReHo':'ReHo',
+               'zfalff':'fALFF',
+                'zalff':'ALFF',
+               'zReHo':'ReHo'}
 
 atlas_dict = {'schaefer':'Schaefer', 
              'basc197':'BASC197',
@@ -169,14 +172,19 @@ model_dict = {'ElasticNet':'ElasticNet',
              'GradientBoostingRegressor': 'Gradient Boosting',
              'RandomForestRegressor': 'Random Forest'}
 
-def plot_results_table(pipeline, original_df_file=None, specific=None, display='best'):
+def plot_results_table(pipeline, feature_list=None, original_df_file=None, specific=None, display='best'):
 
     global_df = pd.DataFrame(columns = ['MDS-UPDRS Prediction target','Feature','Type','Best performing model',
                                         'Best performing parcellation', 'R2', 'RMSE', 'AUC', 
                                         'PPV', 'NPV', 'Spec.','Sens.'])
+    if feature_list == None:
+        feature_list = ['zalff', 'zfalff', 'zReHo']
+        
+    if pipeline == 'no_imaging_features':
+        feature_list = ['ReHo']
         
     for timepoint in ['baseline', '1y', '2y', '4y']:
-        for feature in ['alff', 'falff', 'ReHo']:
+        for feature in feature_list:
 
             if original_df_file != None:
                 original_df = pd.read_csv(original_df_file)

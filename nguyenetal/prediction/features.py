@@ -4,7 +4,7 @@ import os
 def save_features(pipeline, features_dict, outcome_dict, specific=None, features_dir='features'):
     for timepoint in list(features_dict.keys()):
         for atlas in ['schaefer', 'basc197', 'basc444']:
-            for feature in ['alff', 'falff', 'ReHo']:
+            for feature in ['alff', 'falff', 'ReHo', 'zalff', 'zfalff', 'zReHo']:
                 
                 df_features = features_dict[timepoint]
                 df_outcome = outcome_dict[timepoint]

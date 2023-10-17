@@ -81,9 +81,7 @@ class Functional_Preprocessing():
 		self.subject_list = subject_list
 
 		self.pipeline = self.get_preprocessing_wf()
-
-		self.mask_pipeline = self.get_mask_wf()
-
+		
 	def get_reg_wf(self, reg_type:str='func', name:str='func_reg_wf'): 
 		"""
 		Return the registration workflow for direct EPI-to-template registration. 
@@ -229,8 +227,7 @@ class Functional_Preprocessing():
 
 		# Motion correction with McFLIRT
 		motion_correction = Node(
-			fsl.MCFLIRT(dof=6,
-						save_plots=True),
+			fsl.MCFLIRT(dof=6, save_plots=True),
 			name='motion_correction'
 		)
 

@@ -40,7 +40,7 @@ def get_timeseries_confounds_file(
 
 	return filename
 
-def get_mean_ts(func, mask_wm, mask_csf):
+def get_mean_ts(func, mask_wm, mask_csf, subject_id):
 	'''
 	Function to get mean time-serie from a mask. 
 
@@ -73,8 +73,10 @@ def get_mean_ts(func, mask_wm, mask_csf):
 	mean_ts_csf = img_to_signals_labels(func, mask_csf_res)
 	
 	filename = join(os.getcwd(), f'sub-{subject_id}_task-rest_desc-confounds_timeseries.tsv')
+
+	print(mean_ts_csf[0])
 	
-	df = pd.DataFrame({'csf':mean_ts_csf.tolist(), 'white_matter': mean_ts_wm})
+	df = pd.DataFrame({'csf':[i[0] for i in mean_ts_csf[0].tolist()], 'white_matter': [i[0] for i in mean_ts_wm[0].tolist()]})
 	df.to_csv(filename, header=True, sep='\t', index=False)
 
 	return filename
@@ -337,7 +339,7 @@ class Anatomical_Preprocessing:
 
 		extract_timeseries = Node(Function(
 			function = get_mean_ts, 
-			input_names = ['func', 'mask_wm', 'mask_csf'],
+			input_names = ['func', 'mask_wm', 'mask_csf', 'subject_id'],
 			output_names = ['filename']),
 			name = 'extract_timeseries'
 		)
@@ -356,6 +358,7 @@ class Anatomical_Preprocessing:
 
 		workflow.connect([
 			(info_source, select_files, [('subject_id', 'subject_id')]),
+			(info_source, extract_timeseries, [('subject_id', 'subject_id')]),
 			(select_files, extract_timeseries, [('func', 'func')]),
 			(extract_timeseries, data_sink, [('filename', 'no_anat_preproc.@df')])
 		])

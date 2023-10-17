@@ -285,7 +285,8 @@ def get_fMRI_cohort(
         (df_fMRI_subset[COL_STATUS].isin([status_groups])) & \
         (df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(MANUFACTURER)) & \
         (df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(FIELD_STRENGTH)) & \
-        #(df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(TR_VAL)) & \
+        (df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains(TR_VAL)) & \
+        (df_fMRI_subset[COL_IMAGING_PROTOCOL].str.contains('TE=25.0')) & \
         (df_fMRI_subset[COL_IMAGE_DESC].isin(IMAGE_DESC))]
 
     #df_fMRI_subset = df_fMRI_subset.loc[
