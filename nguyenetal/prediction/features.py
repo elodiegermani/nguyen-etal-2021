@@ -27,7 +27,7 @@ def save_features(pipeline, features_dict, outcome_dict, specific=None, features
                     output_dir=f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}'+\
                     f'_atlas-{atlas}_feature-{feature}'
 
-                    if specific == '_only-imaging': 
+                    if 'only-imaging' in specific: 
                         df_all_features = df_img_features
 
                 else: 
