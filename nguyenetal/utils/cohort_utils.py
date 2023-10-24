@@ -1,5 +1,6 @@
 """Helper functions for Nguyen et al. notebooks."""
 from pathlib import Path
+from functools import reduce
 
 import pandas as pd
 import numpy as np
@@ -20,6 +21,7 @@ from ..constants import (
     FILENAME_UPDRS1B,
     FILENAME_UPDRS2,
     FILENAME_UPDRS3,
+    FILENAME_UPDRS3_CLEAN,
     FILENAME_UPDRS4,
     FILENAME_GDS,
     FILENAME_DOMSIDE,
@@ -297,6 +299,82 @@ def get_fMRI_cohort(
         print(f"WARNING: Duplicate subjects in cohort")
 
     return df_fMRI_subset
+
+
+def get_scores_dataframe(
+    utils:livingpark_utils.LivingParkUtils,
+    df_fMRI_subset: pd.DataFrame,
+    ) -> pd.DataFrame:
+    """
+    Compute assesment file with clinical scores to filter the cohort. 
+
+    Parameters
+    ----------
+    utils : livingpark_utils.LivingParkUtils
+        the notebook's LivingParkUtils instance
+
+    df_fMRI_subset : pd.DataFrame
+        dataframe of participants having an fMRI image
+
+    Returns
+    -------
+    df_assessments : pd.DataFrame
+        dataframe with all scores
+    """
+
+    cols_for_merge = [COL_PAT_ID, COL_DATE_INFO, COL_VISIT_TYPE]
+
+    # Load necessary files
+    df_updrs1a = load_ppmi_csv(utils, FILENAME_UPDRS1A, convert_int = [COL_UPDRS1A])
+    df_updrs1b = load_ppmi_csv(utils, FILENAME_UPDRS1B, convert_int = [COL_UPDRS1B])
+    df_updrs2 = load_ppmi_csv(utils, FILENAME_UPDRS2, convert_int = [COL_UPDRS2])
+    df_updrs3 = load_ppmi_csv(utils, FILENAME_UPDRS3_CLEAN, convert_int = [COL_UPDRS3])
+    df_updrs4 = load_ppmi_csv(utils, FILENAME_UPDRS4, convert_int = [COL_UPDRS4], cols_to_impute=COL_UPDRS4)
+
+    df_moca = load_ppmi_csv(utils, FILENAME_MOCA, convert_int = [COL_MOCA])
+    df_gds = load_ppmi_csv(utils, FILENAME_GDS)
+
+    # Sum UPDRS IA and IB scores
+    df_updrs1 = df_updrs1a.merge(df_updrs1b, on=cols_for_merge)
+    df_updrs1[COL_UPDRS1] = df_updrs1.loc[:, [COL_UPDRS1A, COL_UPDRS1B]].sum(axis="columns")
+
+    # Drop unused UPDRSIII scores (only ON medication)
+    df_updrs3 = df_updrs3.drop(df_updrs3.index[(df_updrs3['PAG_NAME'] == 'NUPDRS3') & \
+                             (df_updrs3['EVENT_ID'].isin(['V04', 'V06', 'V08', 'V10', 'V12', 'V13', 'V15']))])
+
+    # Select UPDRS columns to merge
+    df_updrs1 = df_updrs1.loc[:, cols_for_merge + [COL_UPDRS1]]
+    df_updrs2 = df_updrs2.loc[:, cols_for_merge + [COL_UPDRS2]]
+    df_updrs3 = df_updrs3.loc[:, cols_for_merge + [COL_UPDRS3, 'NHY', 'PAG_NAME', 'PDSTATE']]
+    df_updrs4 = df_updrs4.loc[:, cols_for_merge + [COL_UPDRS4]]
+
+    # Compute GDS total score 
+    gds_cols = df_gds.columns[['GDS' in strcol for strcol in df_gds.columns]].tolist()
+    df_gds['GDS_TOTAL'] = df_gds[gds_cols].sum(axis=1)
+    df_gds = df_gds.loc[:, cols_for_merge + ['GDS_TOTAL']]
+
+    # Select MOCA columns to merge
+    df_moca = df_moca.loc[:, cols_for_merge + [COL_MOCA]]
+
+    # Merge 
+    df_assessments_all = reduce(
+        lambda df1, df2: df1.merge(df2, on=cols_for_merge, how="outer"),
+        [df_updrs2, df_updrs3, df_updrs1, df_updrs4, df_moca, df_gds],
+    ).drop_duplicates()
+
+    # Compute TOTAL UPDRS SCORE 
+    updrs_cols = [COL_UPDRS1, COL_UPDRS2, COL_UPDRS3, COL_UPDRS4]
+    df_assessments_all['UPDRS_TOT'] = df_assessments_all[updrs_cols].sum(axis=1)
+       
+    # Only keep cohort participants
+    df_cohort_assessments = df_assessments_all.loc[
+        df_assessments_all[COL_PAT_ID].isin(df_fMRI_subset[COL_PAT_ID])]
+
+    # Drop participants that don't have UPDRS III Score
+    df_cohort_assessments = df_cohort_assessments.dropna(subset=['NP3TOT'])
+
+    return df_cohort_assessments
+
 
 def to_1_decimal_str(
     f:float

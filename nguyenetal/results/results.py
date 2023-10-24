@@ -29,7 +29,7 @@ def cross_validation_results(pipeline, feature, timepoint, specific=None):
                     model_dict = pickle.load(f)
                     f.close()
             except FileNotFoundError:
-                print(f'{output_dir}/{model}_results.pkl')
+                print(f'{output_dir}/{model_name}_results.pkl')
                 continue
     
             df_all_features = pd.read_csv(f'{output_dir}/data.csv',
@@ -86,6 +86,7 @@ def prediction_results(df, threshold, select_across='folds'):
 
         trueneg, falsepos, falseneg, truepos = metrics.confusion_matrix(best_model_df['True class'], 
                                          best_model_df['Predicted class'] ).ravel()
+        
         r_square = metrics.r2_score(best_model_df['Target'], best_model_df['Prediction'])
         rmse = np.sqrt(metrics.mean_squared_error(best_model_df['Target'], best_model_df['Prediction']))
         auc = metrics.roc_auc_score(best_model_df['True class'], best_model_df['Predicted class'])
@@ -143,7 +144,7 @@ def prediction_results(df, threshold, select_across='folds'):
                 best_model_df = pd.concat([best_model_df, model_atlas_summary_df])
 
         best_model_df['best_model'] = [0 for i in range(len(best_model_df))]
-        best_model_df['best_model'][best_model_df['r2'] == np.max(best_model_df['r2'])] = 1
+        best_model_df['best_model'][best_model_df['val_rmse'] == np.min(best_model_df['val_rmse'])] = 1
 
         scores_df = best_model_df[best_model_df['best_model']==1]
         scores_df = scores_df.drop(['val_rmse', 'val_r2'], axis=1)
@@ -157,11 +158,11 @@ timepoint_dict = {'baseline':'Baseline',
                  '4y': 'Year 4'}
 
 feature_dict = {'falff':'fALFF',
-                'alff':'ALFF',
+                'alff':'fALFF',
                'ReHo':'ReHo',
-               'zfalff':'zfALFF',
-                'zalff':'zALFF',
-               'zReHo':'zReHo'}
+               'zfalff':'fALFF',
+                'zalff':'fALFF',
+               'zReHo':'ReHo'}
 
 atlas_dict = {'schaefer':'Schaefer', 
              'basc197':'BASC197',
@@ -182,10 +183,10 @@ def plot_results_table(pipeline, feature_list=None, original_df_file=None, speci
                                         'Best performing parcellation', 'R2', 'RMSE', 'AUC', 
                                         'PPV', 'NPV', 'Spec.','Sens.'])
     if feature_list == None:
-        feature_list = ['zalff', 'zfalff', 'zReHo']
+        feature_list = ['zfalff', 'zReHo']
         
     if pipeline == 'no_imaging_features':
-        feature_list = ['ReHo']
+        feature_list = ['zfalff', 'zReHo']
         
     for timepoint in ['baseline', '1y', '2y', '4y']:
         for feature in feature_list:
@@ -197,12 +198,16 @@ def plot_results_table(pipeline, feature_list=None, original_df_file=None, speci
                 global_df = pd.concat([global_df, sub_original_df]) # Add the results to the table 
 
             # Look at results computed for replication
-            if display != 'folds':
-                if not specific:
-                    df_feature_results = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}_feature-{feature}_test_results.csv')
-                else: 
-                    df_feature_results = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}_feature-{feature}{specific}_test_results.csv')
+            if not specific:
+                cv_df = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}_feature-{feature}_cross-validation_results.csv')
+            else: 
+                cv_df = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}_feature-{feature}{specific}_cross-validation_results.csv')
 
+            if display == 'folds':
+                best_model_per_fold, df_feature_results = prediction_results(cv_df, 35, 'folds')
+            
+            else:
+                df_feature_results, scores_df = prediction_results(cv_df, 35, 'model')
                 if display == 'best':
                     df_feature_results = df_feature_results[df_feature_results['best_model']==1]
                     
@@ -217,53 +222,53 @@ def plot_results_table(pipeline, feature_list=None, original_df_file=None, speci
                     original_best_model = list(model_dict.keys())[list(model_dict.values()).index(original_best_model)]
                     original_best_atlas = sub_original_df['Best performing parcellation'].iloc[0]
                     original_best_atlas = list(atlas_dict.keys())[list(atlas_dict.values()).index(original_best_atlas)]
-
+    
                     df_feature_results = df_feature_results.loc[(df_feature_results['model']==original_best_model) &\
                                                                 (df_feature_results['atlas']==original_best_atlas)]
-
-                
-                for i in range(len(df_feature_results)):
-                    sub_df = pd.DataFrame({
-                        'MDS-UPDRS Prediction target': [timepoint_dict[timepoint]],
-                        'Feature': [str(feature_dict[feature])],
-                        'Type': ['Replication'],
-                        'Best performing model': [model_dict[df_feature_results['model'].iloc[i]]],
-                        'Best performing parcellation': [atlas_dict[df_feature_results['atlas'].iloc[i]]],
-                        'R2': [round(df_feature_results['r2'].iloc[i],5)],
-                        'RMSE': [round(df_feature_results['rmse'].iloc[i],3)],
-                        'AUC':[round(df_feature_results['auc'].iloc[i]*100,3)],
-                        'PPV': [round(df_feature_results['ppv'].iloc[i]*100, 1)],
-                        'NPV':[round(df_feature_results['npv'].iloc[i]*100,1)],
-                        'Spec.': [round(df_feature_results['spec'].iloc[i]*100, 1)],
-                        'Sens.': [round(df_feature_results['sens'].iloc[i]*100, 1)]
-                    })
     
-                    global_df = pd.concat([global_df, sub_df])
+                
+            for i in range(len(df_feature_results)):
+                sub_df = pd.DataFrame({
+                    'MDS-UPDRS Prediction target': [timepoint_dict[timepoint]],
+                    'Feature': [str(feature_dict[feature])],
+                    'Type': ['Replication'],
+                    'Best performing model': [model_dict[df_feature_results['model'].iloc[i]]],
+                    'Best performing parcellation': [atlas_dict[df_feature_results['atlas'].iloc[i]]],
+                    'R2': [round(df_feature_results['r2'].iloc[i],3)],
+                    'RMSE': [round(df_feature_results['rmse'].iloc[i],2)],
+                    'AUC':[round(df_feature_results['auc'].iloc[i],3)],
+                    'PPV': [str(round(df_feature_results['ppv'].iloc[i]*100, 1))+'%'],
+                    'NPV':[str(round(df_feature_results['npv'].iloc[i]*100,1))+'%'],
+                    'Spec.': [str(round(df_feature_results['spec'].iloc[i]*100, 1))+'%'],
+                    'Sens.': [str(round(df_feature_results['sens'].iloc[i]*100, 1))+'%']
+                })
 
-                if display == '5bests_mean':
-                    global_df_feat = global_df.loc[(global_df['Feature']==str(feature_dict[feature])) &\
-                                                    (global_df['MDS-UPDRS Prediction target']==str(timepoint_dict[timepoint])) &\
-                                                    (global_df['Type']=='Replication')]
-                    sub_df_mean = pd.DataFrame({
-                        'MDS-UPDRS Prediction target': [timepoint_dict[timepoint]],
-                        'Feature': [str(feature_dict[feature])],
-                        'Type': ['Replication'],
-                        'Best performing model': [global_df_feat['Best performing model'].tolist()],
-                        'Best performing parcellation': [global_df_feat['Best performing parcellation'].tolist()],
-                        'R2': [str(round(np.mean(global_df_feat['R2'].tolist()), 3)) + '±' + str(round(np.std(global_df_feat['R2'].tolist()),3))],
-                        'RMSE': [str(round(np.mean(global_df_feat['RMSE'].tolist()),3)) + '±' + str(round(np.std(global_df_feat['RMSE'].tolist()),4))],
-                        'AUC': [str(round(np.mean(global_df_feat['AUC'].tolist()), 1)) + '% ± ' + str(round(np.std(global_df_feat['AUC'].tolist()),1))],
-                        'PPV': [str(round(np.mean(global_df_feat['PPV'].tolist()), 1)) + '% ±' + str(round(np.std(global_df_feat['PPV'].tolist()),1))],
-                        'NPV':[str(round(np.mean(global_df_feat['NPV'].tolist()),1)) + '% ±' + str(round(np.std(global_df_feat['NPV'].tolist()), 1))],
-                        'Spec.': [str(round(np.mean(global_df_feat['Spec.'].tolist()), 1)) + '% ±' + str(round(np.std(global_df_feat['Spec.'].tolist()),1))],
-                        'Sens.': [str(round(np.mean(global_df_feat['Sens.'].tolist()),1)) + '% ±' + str(round(np.std(global_df_feat['Sens.'].tolist()),1))]
-                    })
+                global_df = pd.concat([global_df, sub_df])
 
-                    global_df_mean = pd.concat([global_df_mean, sub_df_mean])
+            if display == '5bests_mean':
+                global_df_feat = global_df.loc[(global_df['Feature']==str(feature_dict[feature])) &\
+                                                (global_df['MDS-UPDRS Prediction target']==str(timepoint_dict[timepoint])) &\
+                                                (global_df['Type']=='Replication')]
+                sub_df_mean = pd.DataFrame({
+                    'MDS-UPDRS Prediction target': [timepoint_dict[timepoint]],
+                    'Feature': [str(feature_dict[feature])],
+                    'Type': ['Replication'],
+                    'Best performing model': [global_df_feat['Best performing model'].tolist()],
+                    'Best performing parcellation': [global_df_feat['Best performing parcellation'].tolist()],
+                    'R2': [str(round(np.mean(global_df_feat['R2'].tolist()), 3)) + '±' + str(round(np.std(global_df_feat['R2'].tolist()),3))],
+                    'RMSE': [str(round(np.mean(global_df_feat['RMSE'].tolist()),3)) + '±' + str(round(np.std(global_df_feat['RMSE'].tolist()),4))],
+                    'AUC': [str(round(np.mean(global_df_feat['AUC'].tolist()), 1)) + '% ± ' + str(round(np.std(global_df_feat['AUC'].tolist()),1))],
+                    'PPV': [str(round(np.mean(global_df_feat['PPV'].tolist()), 1)) + '% ±' + str(round(np.std(global_df_feat['PPV'].tolist()),1))],
+                    'NPV':[str(round(np.mean(global_df_feat['NPV'].tolist()),1)) + '% ±' + str(round(np.std(global_df_feat['NPV'].tolist()), 1))],
+                    'Spec.': [str(round(np.mean(global_df_feat['Spec.'].tolist()), 1)) + '% ±' + str(round(np.std(global_df_feat['Spec.'].tolist()),1))],
+                    'Sens.': [str(round(np.mean(global_df_feat['Sens.'].tolist()),1)) + '% ±' + str(round(np.std(global_df_feat['Sens.'].tolist()),1))]
+                })
+
+                global_df_mean = pd.concat([global_df_mean, sub_df_mean])
                     
     if pipeline == 'no_imaging_features':
         global_df['Best performing parcellation'].loc[global_df['Type']=='Replication'] = '/'
-        global_df = global_df.drop_duplicates(subset = ['MDS-UPDRS Prediction target', 'Feature', 'Type', 'Best performing model'])
+        global_df = global_df.drop_duplicates(subset = ['MDS-UPDRS Prediction target', 'Type', 'Feature','Best performing model'])
 
     if display == '5bests_mean':
         global_df = global_df_mean
@@ -278,14 +283,14 @@ def plot_unity(xdata, ydata, **kwargs):
             linestyle='--', linewidth=1.0)
 
 
-def plot_pred_real(pipeline, global_df, specific=None):
+def plot_pred_real(pipeline, global_df, specific=None, feature_list = ['zReHo', 'zfalff']):
     if not os.path.isdir(f'./outputs/{pipeline}/figures'):
         os.mkdir(f'./outputs/{pipeline}/figures')
     
     for timepoint in ['baseline', '1y', '2y', '4y']:
         fig = plt.figure(figsize=(10,4))
         i=0
-        for feature in ['ReHo', 'falff']:
+        for feature in feature_list:
             i += 1
             rsquare = round(global_df['R2'].loc[(global_df['Type']=='Replication') &\
                                     (global_df['Feature']==feature_dict[feature]) &\

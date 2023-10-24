@@ -1,9 +1,9 @@
 MDS-UPDRS Prediction target,Feature,Type,Best performing model,Best performing parcellation,R2,RMSE,AUC,PPV,NPV,Spec.,Sens.
-Baseline,zReHo,Original,Gradient Boosting,Schaefer,0.304,13.415,0.674,59.4%,75.0%,73.5%,61.3%
-Baseline,zfALFF,Original,Gradient Boosting,Schaefer,0.242,14.006,0.668,60.0%,74.0%,75.5%,58.1%
-Year 1,zReHo,Original,ElasticNet,Schaefer,0.453,15.861,0.753,70.4%,80.0%,71.4%,79.2%
-Year 1,zfALFF,Original,ElasticNet,Schaefer,0.558,14.256,0.753,70.4%,80.0%,71.4%,79.2%
-Year 2,zReHo,Original,ElasticNet,Schaefer,0.471,13.322,0.739,75.9%,75.0%,63.2%,84.6%
-Year 2,zfALFF,Original,ElasticNet,Schaefer,0.463,13.426,0.765,78.6%,76.5%,68.4%,84.6%
-Year 4,zReHo,Original,SVM,BASC197,0.255,14.015,0.699,73.3%,66.7%,75.0%,64.7%
-Year 4,zfALFF,Original,SVM,BASC197,0.152,14.957,0.636,64.7%,62.5%,62.5%,64.7%
+Baseline,ReHo,Original,Gradient Boosting,Schaefer,0.304,13.415,0.674,59.4%,75.0%,73.5%,61.3%
+Baseline,fALFF,Original,Gradient Boosting,Schaefer,0.242,14.006,0.668,60.0%,74.0%,75.5%,58.1%
+Year 1,ReHo,Original,ElasticNet,Schaefer,0.453,15.861,0.753,70.4%,80.0%,71.4%,79.2%
+Year 1,fALFF,Original,ElasticNet,Schaefer,0.558,14.256,0.753,70.4%,80.0%,71.4%,79.2%
+Year 2,ReHo,Original,ElasticNet,Schaefer,0.471,13.322,0.739,75.9%,75.0%,63.2%,84.6%
+Year 2,fALFF,Original,ElasticNet,Schaefer,0.463,13.426,0.765,78.6%,76.5%,68.4%,84.6%
+Year 4,ReHo,Original,SVM,BASC197,0.255,14.015,0.699,73.3%,66.7%,75.0%,64.7%
+Year 4,fALFF,Original,SVM,BASC197,0.152,14.957,0.636,64.7%,62.5%,62.5%,64.7%

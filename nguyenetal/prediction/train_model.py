@@ -2,7 +2,7 @@
 from sklearn import model_selection, pipeline, preprocessing, impute, feature_selection, metrics, svm, linear_model, \
     ensemble
 import copy
-from nguyenetal.utils import cross_validation, regression_model
+from nguyenetal.prediction import cross_validation, regression_model
 import pandas as pd
 import numpy as np
 
