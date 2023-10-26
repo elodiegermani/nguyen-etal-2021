@@ -1,4 +1,3 @@
-git+https://github.com/LivingPark-MRI/livingpark-utils.git
 nilearn
 numpy
 pandas
