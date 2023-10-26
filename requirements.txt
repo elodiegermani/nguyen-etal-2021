@@ -1,4 +1,4 @@
-git+git://github.com/LivingPark-MRI/livingpark-utils.git#egg=livingpark_utils
+git+https://github.com/LivingPark-MRI/livingpark-utils.git
 nilearn
 numpy
 pandas
