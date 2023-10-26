@@ -1,0 +1,68 @@
+{
+    "name": "Image processing",
+    "description": "Tool for image processing workflows.",
+    "tool-version": "elodiegermani/nguyen-etal-2021:latest nguyen-etal-2021:latest",
+    "schema-version": "0.5",
+    "command-line": "source activate neuro && python3 /home/nguyen-etal-2021/code/boutiques/image_processing.py [PIPELINE] [STEP] [BASE_DIR] [SUBJECT_LIST]",
+    "container-image": {
+        "image": "elodiegermani/nguyen-etal-2021",
+        "index": "docker:elodiegermani/nguyen-etal-2021:latest",
+        "type": "docker"
+    },
+    "inputs": [
+        {
+            "id": "pipeline",
+            "name": "pipeline",
+            "description": "Pre-processing pipeline",
+            "optional": true,
+            "type": "String",
+            "value-key": "[PIPELINE]",
+            "value-choices": [
+                "reproduction_pipeline-afni_seg",
+                "reproduction_pipeline-fsl_seg",
+                "reproduction_pipeline-no_anat"
+            ],
+            "command-line-flag": "--pipeline"
+        },
+        {
+            "id": "step",
+            "name": "step",
+            "description": "Which step to run",
+            "optional": true,
+            "type": "String",
+            "value-key": "[STEP]",
+            "value-choices": [
+                "func",
+                "anat", 
+                "ica",
+                "confound",
+                "feature"
+            ],
+            "command-line-flag": "--step"
+        },
+        {
+            "id": "base_dir",
+            "name": "base_dir",
+            "description": "Absolute path to this directory",
+            "optional": true,
+            "type": "String",
+            "value-key": "[BASE_DIR]",
+            "command-line-flag": "--base_dir"
+        },
+        {
+            "id": "subject_list",
+            "name": "subject_list",
+            "description": "Subject list",
+            "optional": true,
+            "type": "String",
+            "value-key": "[SUBJECT_LIST]",
+            "command-line-flag": "--subject_list"
+        }
+    ],
+    "tags": {},
+    "suggested-resources": {
+        "cpu-cores": 4,
+        "ram": 8,
+        "walltime-estimate": 200
+    }
+}

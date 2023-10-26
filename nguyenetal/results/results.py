@@ -144,7 +144,7 @@ def prediction_results(df, threshold, select_across='folds'):
                 best_model_df = pd.concat([best_model_df, model_atlas_summary_df])
 
         best_model_df['best_model'] = [0 for i in range(len(best_model_df))]
-        best_model_df['best_model'][best_model_df['val_rmse'] == np.min(best_model_df['val_rmse'])] = 1
+        best_model_df['best_model'][best_model_df['r2'] == np.max(best_model_df['r2'])] = 1
 
         scores_df = best_model_df[best_model_df['best_model']==1]
         scores_df = scores_df.drop(['val_rmse', 'val_r2'], axis=1)
@@ -310,18 +310,18 @@ def plot_pred_real(pipeline, global_df, specific=None, feature_list = ['zReHo', 
 
             if specific == None:
                 df_pred_target = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/'+\
-                                    f'prediction-{timepoint}_feature-{feature}_test_results.csv')
+                                    f'prediction-{timepoint}_feature-{feature}_cross-validation_results.csv')
 
             else: 
                 df_pred_target = pd.read_csv(f'./outputs/{pipeline}/prediction_scores/'+\
-                                    f'prediction-{timepoint}_feature-{feature}{specific}_test_results.csv')
+                                    f'prediction-{timepoint}_feature-{feature}{specific}_cross-validation_results.csv')
 
 
-            df_pred_target = df_pred_target.loc[(df_pred_target['model']==model) &\
-                                                (df_pred_target['atlas']==atlas)]
+            df_pred_target = df_pred_target.loc[(df_pred_target['Model']==model) &\
+                                                (df_pred_target['Atlas']==atlas)]
 
-            target = [float(t) for t in df_pred_target['Target'].tolist()[0][1:-1].split(',')]
-            pred = [float(p) for p in df_pred_target['Prediction'].tolist()[0][1:-1].split(',')]
+            target = [float(t) for t in df_pred_target['Target'].tolist()]
+            pred = [float(p) for p in df_pred_target['Prediction'].tolist()]
     
             df_comp = pd.DataFrame({f'True MDS-UPDRS score at {timepoint_dict[timepoint]}':target,
                                    f'Predicted MDS-UPDRS score at {timepoint_dict[timepoint]}':pred})

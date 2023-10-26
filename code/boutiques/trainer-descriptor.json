@@ -1,0 +1,70 @@
+{
+    "name": "Trainer",
+    "description": "Tool for training machine learning models.",
+    "tool-version": "elodiegermani/nguyen-etal-2021:latest nguyen-etal-2021:latest",
+    "schema-version": "0.5",
+    "command-line": "source activate neuro && python3 /home/nguyen-etal-2021/code/boutiques/trainer.py [PIPELINE] [SPECIFIC] [TIMEPOINTS] [FEATURES] [ATLASES]",
+    "container-image": {
+        "image": "elodiegermani/nguyen-etal-2021",
+        "index": "docker:elodiegermani/nguyen-etal-2021:latest",
+        "type": "docker"
+    },
+    "inputs": [
+        {
+            "id": "pipeline",
+            "name": "pipeline",
+            "description": "Pre-processing pipeline",
+            "optional": true,
+            "type": "String",
+            "value-key": "[PIPELINE]",
+            "value-choices": [
+                "reproduction_pipeline-afni_seg",
+                "reproduction_pipeline-fsl_seg",
+                "reproduction_pipeline-no_anat"
+            ],
+            "command-line-flag": "--pipeline"
+        },
+        {
+            "id": "specific",
+            "name": "specific",
+            "description": "Specificity of training",
+            "optional": true,
+            "type": "String",
+            "value-key": "[SPECIFICITY]",
+            "command-line-flag": "--specific"
+        },
+        {
+            "id": "timepoints",
+            "name": "timepoints",
+            "description": "Timepoints to train",
+            "optional": true,
+            "type": "String",
+            "value-key": "[TIMEPOINTS]",
+            "command-line-flag": "--timepoints"
+        },
+        {
+            "id": "features",
+            "name": "features",
+            "description": "Features to train",
+            "optional": true,
+            "type": "String",
+            "value-key": "[FEATURES]",
+            "command-line-flag": "--features"
+        },
+        {
+            "id": "atlases",
+            "name": "atlases",
+            "description": "Atlases to train",
+            "optional": true,
+            "type": "String",
+            "value-key": "[ATLASES]",
+            "command-line-flag": "--atlases"
+        },
+    ],
+    "tags": {},
+    "suggested-resources": {
+        "cpu-cores": 4,
+        "ram": 8,
+        "walltime-estimate": 200
+    }
+}

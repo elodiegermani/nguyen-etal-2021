@@ -3,14 +3,19 @@ from sklearn import model_selection, pipeline, preprocessing, impute, feature_se
     ensemble
 import copy
 from nguyenetal.prediction import cross_validation, regression_model
+from nguyenetal.results import results
 import pandas as pd
 import numpy as np
 
-def train_ml_models(pipeline, specific):
+def train_ml_models(pipeline, 
+                    specific, 
+                    timepoints = ['baseline', '1y', '2y', '4y'], 
+                    features = ['zfalff', 'zReHo'], 
+                    atlases = ['schaefer', 'basc197', 'basc444']):
 
-    for timepoint in ['baseline', '1y', '2y', '4y']:
-        for atlas in ['schaefer', 'basc197', 'basc444']:
-            for feature in ['falff', 'ReHo']:
+    for timepoint in timepoints:
+        for feature in features:
+            for atlas in atlases:
 
                 outer = model_selection.LeaveOneOut()
                 inner = cross_validation.StratifiedKFoldContinuous(n_splits=10, n_bins=3, 
@@ -45,4 +50,10 @@ def train_ml_models(pipeline, specific):
 
                 regressors.set_feature_selection(None)
                 
-                df_summary = regressors.run_all_models(n_iters=10, n_jobs=32)
+                df_summary = regressors.run_all_models(n_iters=100, n_jobs=32)
+
+            cv_df = results.cross_validation_results(pipeline, feature, timepoint, specific)
+            if specific==None:         
+                cv_df.to_csv(f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}_feature-{feature}_cross-validation_results.csv')
+            else: 
+                cv_df.to_csv(f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}_feature-{feature}{specific}_cross-validation_results.csv')

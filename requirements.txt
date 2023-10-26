@@ -1,8 +1,10 @@
-livingpark-utils
-nibabel
+git+git://github.com/LivingPark-MRI/livingpark-utils.git#egg=livingpark_utils
 nilearn
 numpy
 pandas
+matplotlib
 seaborn
 scipy
 openpyxl
+future
+bosh

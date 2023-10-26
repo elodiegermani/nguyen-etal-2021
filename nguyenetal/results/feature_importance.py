@@ -89,6 +89,10 @@ def plot_features_importance(df_importance, n_features_plot):
                        palette=sns.xkcd_palette(['pale red', 'windows blue']), saturation=0.75,
                        hue_order=['positive', 'negative'],
                        orient='h')
+    bars.tick_params(labelsize=16)
+    plt.yticks(va='top') 
+    axis.set_ylabel('Feature',fontsize=16, fontweight='bold')
+    axis.set_xlabel('Importance',fontsize=16, fontweight='bold')
 
     plt.legend(loc='lower right')
     plt.tight_layout()
@@ -152,8 +156,8 @@ timepoint_dict = {'baseline':'Baseline',
                  '2y': 'Year 2', 
                  '4y': 'Year 4'}
 
-feature_dict = {'falff':'fALFF',
-               'ReHo':'ReHo'}
+feature_dict = {'zfalff':'fALFF',
+               'zReHo':'ReHo'}
 
 atlas_dict = {'schaefer':'Schaefer', 
              'basc197':'BASC197',

@@ -1,0 +1,804 @@
+%YAML 1.1
+---
+# CPAC Pipeline Configuration YAML file
+# Version 1.8.5
+#
+# http://fcp-indi.github.io for more info.
+#
+# Tip: This file can be edited manually with a text editor for quick modifications.
+
+pipeline_setup:
+
+  # Name for this pipeline configuration - useful for identification.
+  # This string will be sanitized and used in filepaths
+  pipeline_name: cpac-reproduction-pipeline
+
+  output_directory:
+
+    # Directory where C-PAC should write out processed data, logs, and crash reports.
+    # - If running in a container (Singularity/Docker), you can simply set this to an arbitrary
+    #   name like '/outputs', and then map (-B/-v) your desired output directory to that label.
+    # - If running outside a container, this should be a full path to a directory.
+    path: /outputs/output
+
+    # (Optional) Path to a BIDS-Derivatives directory that already has outputs.
+    #   - This option is intended to ingress already-existing resources from an output
+    #     directory without writing new outputs back into the same directory.
+    #   - If provided, C-PAC will ingress the already-computed outputs from this directory and
+    #     continue the pipeline from where they leave off.
+    #   - If left as 'None', C-PAC will ingress any already-computed outputs from the
+    #     output directory you provide above in 'path' instead, the default behavior.
+    source_outputs_dir: None
+
+    # Set to True to make C-PAC ingress the outputs from the primary output directory if they
+    # exist, even if a source_outputs_dir is provided
+    #   - Setting to False will pull from source_outputs_dir every time, over-writing any
+    #     calculated outputs in the main output directory
+    #   - C-PAC will still pull from source_outputs_dir if the main output directory is
+    #     empty, however
+    pull_source_once: True
+
+    # Include extra versions and intermediate steps of functional preprocessing in the output directory.
+    write_func_outputs: True
+
+    # Include extra outputs in the output directory that may be of interest when more information is needed.
+    write_debugging_outputs: True
+
+    # Output directory format and structure.
+    # Options: default, ndmg
+    output_tree: "default"
+
+    # Quality control outputs
+    quality_control:
+      # Generate quality control pages containing preprocessing and derivative outputs.
+      generate_quality_control_images: True
+
+      # Generate eXtensible Connectivity Pipeline-style quality control files
+      generate_xcpqc_files: False
+
+  working_directory:
+
+    # Directory where C-PAC should store temporary and intermediate files.
+    # - This directory must be saved if you wish to re-run your pipeline from where you left off (if not completed).
+    # - NOTE: As it stores all intermediate files, this directory can grow to become very
+    #   large, especially for data with a large amount of TRs.
+    # - If running in a container (Singularity/Docker), you can simply set this to an arbitrary
+    #   name like '/work', and then map (-B/-v) your desired output directory to that label.
+    # - If running outside a container, this should be a full path to a directory.
+    # - This can be written to '/tmp' if you do not intend to save your working directory.
+    path: /outputs/working
+
+    # Deletes the contents of the Working Directory after running.
+    # This saves disk space, but any additional preprocessing or analysis will have to be completely re-run.
+    remove_working_dir: True
+
+  log_directory:
+
+    # Whether to write log details of the pipeline run to the logging files.
+    run_logging: True
+
+    path: /outputs/logs
+
+    # Configuration options for logging visualizations of the workflow graph
+    graphviz:
+      # Configuration for a graphviz visualization of the entire workflow. See https://fcp-indi.github.io/docs/developer/nodes#CPAC.pipeline.nipype_pipeline_engine.Workflow.write_graph for details about the various options
+      entire_workflow:
+        # Whether to generate the graph visualization
+        generate: Off
+        # Options: [orig, hierarchical, flat, exec, colored]
+        graph2use: []
+        # Options: [svg, png]
+        format: []
+        # The node name will be displayed in the form `nodename (package)` when On or `nodename.Class.package` when Off
+        simple_form: On
+
+  crash_log_directory:
+
+    # Directory where CPAC should write crash logs.
+    path: /outputs/crash
+
+  system_config:
+    # Stop worklow execution on first crash?
+    fail_fast: Off
+    # Random seed used to fix the state of execution.
+    # If unset, each process uses its own default.
+    # If set, a `random.log` file will be generated logging the random seed and each node to which that seed was applied.
+    # If set to a positive integer (up to 2147483647), that integer will be used to seed each process that accepts a random seed.
+    # If set to 'random', a random positive integer (up to 2147483647) will be generated and that seed will be used to seed each process that accepts a random seed.
+    random_seed: 42
+
+    # Select Off if you intend to run CPAC on a single machine.
+    # If set to On, CPAC will attempt to submit jobs through the job scheduler / resource manager selected below.
+    on_grid:
+
+      run: Off
+
+      # Sun Grid Engine (SGE), Portable Batch System (PBS), or Simple Linux Utility for Resource Management (SLURM).
+      # Only applies if you are running on a grid or compute cluster.
+      resource_manager: SGE
+
+      SGE:
+        # SGE Parallel Environment to use when running CPAC.
+        # Only applies when you are running on a grid or compute cluster using SGE.
+        parallel_environment:  mpi_smp
+
+        # SGE Queue to use when running CPAC.
+        # Only applies when you are running on a grid or compute cluster using SGE.
+        queue:  all.q
+
+    # The maximum amount of memory each participant's workflow can allocate.
+    # Use this to place an upper bound of memory usage.
+    # - Warning: 'Memory Per Participant' multiplied by 'Number of Participants to Run Simultaneously'
+    #   must not be more than the total amount of RAM.
+    # - Conversely, using too little RAM can impede the speed of a pipeline run.
+    # - It is recommended that you set this to a value that when multiplied by
+    #   'Number of Participants to Run Simultaneously' is as much RAM you can safely allocate.
+    maximum_memory_per_participant: 1
+
+    # Prior to running a pipeline C-PAC makes a rough estimate of a worst-case-scenario maximum concurrent memory usage with high-resoltion data, raising an exception describing the recommended minimum memory allocation for the given configuration.
+    # Turning this option off will allow pipelines to run without allocating the recommended minimum, allowing for more efficient runs at the risk of out-of-memory crashes (use at your own risk)
+    raise_insufficient: On
+
+    # A callback.log file from a previous run can be provided to estimate memory usage based on that run.
+    observed_usage:
+      # Path to callback log file with previously observed usage.
+      # Can be overridden with the commandline flag `--runtime_usage`.
+      callback_log:
+      # Percent. E.g., `buffer: 10` would estimate 1.1 * the observed memory usage from the callback log provided in "usage".
+      # Can be overridden with the commandline flag `--runtime_buffer`.
+      buffer: 10
+
+    # The maximum amount of cores (on a single machine) or slots on a node (on a cluster/grid)
+    # to allocate per participant.
+    # - Setting this above 1 will parallelize each participant's workflow where possible.
+    #   If you wish to dedicate multiple cores to ANTS-based anatomical registration (below),
+    #   this value must be equal or higher than the amount of cores provided to ANTS.
+    # - The maximum number of cores your run can possibly employ will be this setting multiplied
+    #   by the number of participants set to run in parallel (the 'Number of Participants to Run
+    #   Simultaneously' setting).
+    max_cores_per_participant: 1
+
+    # The number of cores to allocate to ANTS-based anatomical registration per participant.
+    # - Multiple cores can greatly speed up this preprocessing step.
+    # - This number cannot be greater than the number of cores per participant.
+    num_ants_threads: 1
+
+    # The number of cores to allocate to processes that use OpenMP.
+    num_OMP_threads: 1
+
+    # The number of participant workflows to run at the same time.
+    # - The maximum number of cores your run can possibly employ will be this setting
+    #   multiplied by the number of cores dedicated to each participant (the 'Maximum Number of Cores Per Participant' setting).
+    num_participants_at_once: 1
+
+    # Full path to the FSL version to be used by CPAC.
+    # If you have specified an FSL path in your .bashrc file, this path will be set automatically.
+    FSLDIR:  /usr/share/fsl/5.0
+
+  Amazon-AWS:
+
+    # If setting the 'Output Directory' to an S3 bucket, insert the path to your AWS credentials file here.
+    aws_output_bucket_credentials:
+
+    # Enable server-side 256-AES encryption on data to the S3 bucket
+    s3_encryption: False
+
+  Debugging:
+
+    # Verbose developer messages.
+    verbose: On
+
+
+# PREPROCESSING
+# -------------
+registration_workflows:
+
+  functional_registration:
+
+    EPI_registration:
+
+      # directly register the mean functional to an EPI template
+      #   instead of applying the anatomical T1-to-template transform to the functional data that has been
+      #   coregistered to anatomical/T1 space
+      run: On
+
+      # using: ['ANTS', 'FSL', 'FSL-linear']
+      # this is a fork point
+      # ex. selecting both ['ANTS', 'FSL'] will run both and fork the pipeline
+      using: ['ANTS']
+
+      # EPI template for direct functional-to-template registration
+      # (bypassing coregistration and the anatomical-to-template transforms)
+      EPI_template: s3://fcp-indi/resources/cpac/resources/epi_hbn.nii.gz
+
+      # EPI template mask.
+      EPI_template_mask: None
+
+      ANTs:
+
+        # EPI registration configuration - synonymous with T1_registration
+        # parameters under anatomical registration above
+        parameters:
+
+          - collapse-output-transforms: 0
+          - dimensionality: 3
+          - initial-moving-transform :
+             initializationFeature: 0
+
+          - transforms:
+             - Rigid:
+                 gradientStep : 0.1
+                 metric :
+                   type : MI
+                   metricWeight: 1
+                   numberOfBins : 32
+                   samplingStrategy : Regular
+                   samplingPercentage : 0.25
+                 convergence:
+                   iteration : 1000x500x250x100
+                   convergenceThreshold : 1e-08
+                   convergenceWindowSize : 10
+                 smoothing-sigmas : 3.0x2.0x1.0x0.0
+                 shrink-factors : 8x4x2x1
+                 use-histogram-matching : True
+
+             - Affine:
+                 gradientStep : 0.1
+                 metric :
+                   type : MI
+                   metricWeight: 1
+                   numberOfBins : 32
+                   samplingStrategy : Regular
+                   samplingPercentage : 0.25
+                 convergence:
+                   iteration : 1000x500x250x100
+                   convergenceThreshold : 1e-08
+                   convergenceWindowSize : 10
+                 smoothing-sigmas : 3.0x2.0x1.0x0.0
+                 shrink-factors : 8x4x2x1
+                 use-histogram-matching : True
+
+             - SyN:
+                 gradientStep : 0.1
+                 updateFieldVarianceInVoxelSpace : 3.0
+                 totalFieldVarianceInVoxelSpace : 0.0
+                 metric:
+                   type : CC
+                   metricWeight: 1
+                   radius : 4
+                 convergence:
+                   iteration : 100x100x70x20
+                   convergenceThreshold : 1e-09
+                   convergenceWindowSize : 15
+                 smoothing-sigmas : 3.0x2.0x1.0x0.0
+                 shrink-factors : 6x4x2x1
+                 use-histogram-matching : True
+                 winsorize-image-intensities :
+                   lowerQuantile : 0.01
+                   upperQuantile : 0.99
+
+        # Interpolation method for writing out transformed EPI images.
+        # Possible values: Linear, BSpline, LanczosWindowedSinc
+        interpolation: LanczosWindowedSinc
+
+    func_registration_to_template:
+
+      # these options modify the application (to the functional data), not the calculation, of the
+      # T1-to-template and EPI-to-template transforms calculated earlier during registration
+      
+      # apply the functional-to-template (T1 template) registration transform to the functional data
+      run: Off
+      
+      # apply the functional-to-template (EPI template) registration transform to the functional data
+      run_EPI: On
+
+      output_resolution:
+
+        # The resolution (in mm) to which the preprocessed, registered functional timeseries outputs are written into.
+        # NOTE:
+        #   selecting a 1 mm or 2 mm resolution might substantially increase your RAM needs- these resolutions should be selected with caution.
+        #   for most cases, 3 mm or 4 mm resolutions are suggested.
+        # NOTE:
+        #   this also includes the single-volume 3D preprocessed functional data,
+        #   such as the mean functional (mean EPI) in template space
+        func_preproc_outputs: 3mm
+
+        # The resolution (in mm) to which the registered derivative outputs are written into.
+        # NOTE:
+        #   this is for the single-volume functional-space outputs (i.e. derivatives)
+        #   thus, a higher resolution may not result in a large increase in RAM needs as above
+        func_derivative_outputs: 3mm
+
+      target_template:      
+        # choose which template space to transform derivatives towards
+        # using: ['T1_template', 'EPI_template']
+        # this is a fork point
+        # NOTE:
+        #   this will determine which registration transform to use to warp the functional
+        #   outputs and derivatives to template space
+        using: ['EPI_template']
+
+        EPI_template:
+
+          # EPI template for direct functional-to-template registration
+          # (bypassing coregistration and the anatomical-to-template transforms)
+          EPI_template_funcreg: s3://fcp-indi/resources/cpac/resources/epi_hbn.nii.gz
+
+          # EPI template mask.
+          EPI_template_mask_funcreg: None
+
+          # a standard template for resampling if using float resolution
+          EPI_template_for_resample:  $FSLDIR/data/standard/MNI152_T1_1mm_brain.nii.gz
+
+      ANTs_pipelines:
+
+        # Interpolation method for writing out transformed functional images.
+        # Possible values: Linear, BSpline, LanczosWindowedSinc
+        interpolation: LanczosWindowedSinc
+
+      apply_transform:
+
+        # options: 'default', 'abcd', 'single_step_resampling_from_stc', 'dcan_nhp'
+        # 'default': apply func-to-anat and anat-to-template transforms on motion corrected functional image.
+        # 'abcd': apply motion correction, func-to-anat and anat-to-template transforms on each of raw functional volume using FSL applywarp based on ABCD-HCP pipeline.
+        # 'single_step_resampling_from_stc': apply motion correction, func-to-anat and anat-to-template transforms on each of slice-time-corrected functional volume using ANTs antsApplyTransform based on fMRIPrep pipeline.
+        #   - if 'single_step_resampling_from_stc', 'template' is the only valid option for ``nuisance_corrections: 2-nuisance_regression: space``
+        using: 'default'
+
+
+functional_preproc:
+
+  run: On
+
+  truncation:
+
+    # First timepoint to include in analysis.
+    # Default is 0 (beginning of timeseries).
+    # First timepoint selection in the scan parameters in the data configuration file, if present, will over-ride this selection.
+    # Note: the selection here applies to all scans of all participants.
+    start_tr: 0
+
+    # Last timepoint to include in analysis.
+    # Default is None or End (end of timeseries).
+    # Last timepoint selection in the scan parameters in the data configuration file, if present, will over-ride this selection.
+    # Note: the selection here applies to all scans of all participants.
+    stop_tr: None
+
+  scaling:
+
+    # Scale functional raw data, usually used in rodent pipeline
+    run: Off
+
+    # Scale the size of the dataset voxels by the factor.
+    scaling_factor: 10
+
+  despiking:
+
+    # Run AFNI 3dDespike
+    # this is a fork point
+    #   run: [On, Off] - this will run both and fork the pipeline
+    run: [Off]
+
+  slice_timing_correction:
+
+    # Interpolate voxel time courses so they are sampled at the same time points.
+    # this is a fork point
+    #   run: [On, Off] - this will run both and fork the pipeline
+    run: [Off]
+
+    # use specified slice time pattern rather than one in header
+    tpattern: None
+
+    # align each slice to given time offset
+    # The default alignment time is the average of the 'tpattern' values (either from the dataset header or from the tpattern option).
+    tzero: None
+
+  motion_estimates_and_correction:
+  
+    run: On
+
+    motion_estimates: 
+
+      # calculate motion statistics BEFORE slice-timing correction
+      calculate_motion_first: Off
+
+      # calculate motion statistics AFTER motion correction
+      calculate_motion_after: On
+
+    motion_correction:
+
+      # using: ['3dvolreg', 'mcflirt']
+      # this is a fork point
+      using: ['mcflirt']
+
+      # option parameters
+      # Choose motion correction reference. Options: mean, median, selected_volume, fmriprep_reference
+      motion_correction_reference: ['mean']
+
+      # Choose motion correction reference volume
+      motion_correction_reference_volume: 0
+
+    motion_estimate_filter:
+
+      # Filter physiological (respiration) artifacts from the head motion estimates.
+      # Adapted from DCAN Labs filter.
+      #     https://www.ohsu.edu/school-of-medicine/developmental-cognition-and-neuroimaging-lab
+      #     https://www.biorxiv.org/content/10.1101/337360v1.full.pdf
+      # this is a fork point
+      #   run: [On, Off] - this will run both and fork the pipeline
+      run: [Off]
+
+  distortion_correction:
+
+    # this is a fork point
+    #   run: [On, Off] - this will run both and fork the pipeline
+    run: [Off]
+
+  func_masking:
+
+    # using: ['AFNI', 'FSL', 'FSL_AFNI', 'Anatomical_Refined', 'Anatomical_Based', 'Anatomical_Resampled', 'CCS_Anatomical_Refined']
+
+    # FSL_AFNI: fMRIPrep-style BOLD mask. Ref: https://github.com/nipreps/niworkflows/blob/a221f612/niworkflows/func/util.py#L246-L514
+    # Anatomical_Refined: 1. binarize anat mask, in case it is not a binary mask. 2. fill holes of anat mask 3. init_bold_mask : input raw func → dilate init func brain mask 4. refined_bold_mask : input motion corrected func → dilate anatomical mask 5. get final func mask
+    # Anatomical_Based: Generate the BOLD mask by basing it off of the anatomical brain mask. Adapted from DCAN Lab's BOLD mask method from the ABCD pipeline.
+    # Anatomical_Resampled: Resample anatomical brain mask in standard space to get BOLD brain mask in standard space. Adapted from DCAN Lab's BOLD mask method from the ABCD pipeline. ("Create fMRI resolution standard space files for T1w image, wmparc, and brain mask […] don't use FLIRT to do spline interpolation with -applyisoxfm for the 2mm and 1mm cases because it doesn't know the peculiarities of the MNI template FOVs")
+    # CCS_Anatomical_Refined: Generate the BOLD mask by basing it off of the anatomical brain. Adapted from the BOLD mask method from the CCS pipeline.
+
+    # this is a fork point
+    using: ['AFNI']
+
+    # Apply functional mask in native space
+    apply_func_mask_in_native_space: On
+
+  generate_func_mean:
+
+    # Generate mean functional image
+    run: On
+
+  normalize_func:
+
+    # Normalize functional image
+    run: On
+
+
+nuisance_corrections:
+
+  1-ICA-AROMA:
+
+    # this is a fork point
+    #   run: [On, Off] - this will run both and fork the pipeline
+    run: [Off]
+
+    # Types of denoising strategy:
+    #   nonaggr: nonaggressive-partial component regression
+    #   aggr:    aggressive denoising
+    denoising_type: nonaggr
+
+  2-nuisance_regression:
+
+    # this is a fork point
+    #   run: [On, Off] - this will run both and fork the pipeline
+    run: [On]
+
+    # this is a fork point
+    # Run nuisance regression in native or template space
+    #   - If set to [native, template], the number of outputs will be double what it would be if only one space were chosen. Nuisance regression will only be run once per fork.
+    #   - If set to template, will use the brain mask configured in
+    #     ``functional_preproc: func_masking: FSL_AFNI: brain_mask``
+    #   - If ``registration_workflows: functional_registration: func_registration_to_template: apply_trasnform: using: single_step_resampling_from_stc``, this must only be set to template
+    space: [native]
+
+    # switch to Off if nuisance regression is off and you don't want to write out the regressors
+    create_regressors: On
+
+    # Select which nuisance signal corrections to apply
+    Regressors:
+
+      -  Name: 'default'
+
+         Motion:
+           include_delayed: true
+           include_squared: true
+           include_delayed_squared: true
+
+         #aCompCor:
+         #  summary:
+         #    method: DetrendPC
+         #    components: 5
+         #  tissues:
+         #    - WhiteMatter
+         #    - CerebrospinalFluid
+         #  extraction_resolution: 2
+
+         CerebrospinalFluid:
+           summary: Mean
+
+         WhiteMatter:
+           summary: Mean
+
+    # Standard Lateral Ventricles Binary Mask
+    # used in CSF mask refinement for CSF signal-related regressions
+    lateral_ventricles_mask: $FSLDIR/data/atlases/HarvardOxford/HarvardOxford-lateral-ventricles-thr25-2mm.nii.gz
+
+    # Whether to run frequency filtering before or after nuisance regression.
+    # Options: 'After' or 'Before'
+    bandpass_filtering_order: 'After'
+
+
+# OUTPUTS AND DERIVATIVES
+# -----------------------
+post_processing:
+
+  spatial_smoothing:
+
+    run: Off
+
+  z-scoring:
+
+    run: Off
+
+
+timeseries_extraction:
+
+  run: Off
+
+  # Enter paths to region-of-interest (ROI) NIFTI files (.nii or .nii.gz) to be used for time-series extraction, and then select which types of analyses to run.
+  # Denote which analyses to run for each ROI path by listing the names below. For example, if you wish to run Avg and SpatialReg, you would enter: '/path/to/ROI.nii.gz': Avg, SpatialReg
+  # available analyses:
+  #   /path/to/atlas.nii.gz: Avg, Voxel, SpatialReg
+  tse_roi_paths:
+    /cpac_templates/CC400.nii.gz: Avg
+    /cpac_templates/aal_mask_pad.nii.gz: Avg
+    /cpac_templates/CC200.nii.gz: Avg
+    /cpac_templates/tt_mask_pad.nii.gz: Avg
+    /cpac_templates/PNAS_Smith09_rsn10.nii.gz: SpatialReg
+    /cpac_templates/ho_mask_pad.nii.gz: Avg
+    /cpac_templates/rois_3mm.nii.gz: Avg
+    /ndmg_atlases/label/Human/AAL_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/CAPRSC_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/DKT_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/DesikanKlein_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/HarvardOxfordcort-maxprob-thr25_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/HarvardOxfordsub-maxprob-thr25_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Juelich_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/MICCAI_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /cpac_templates/Schaefer2018_space-FSLMNI152_res-2mm_desc-1000Parcels17NetworksOrder.nii.gz: Avg
+    /cpac_templates/Schaefer2018_space-FSLMNI152_res-2mm_desc-200Parcels17NetworksOrder.nii.gz: Avg
+    /cpac_templates/Schaefer2018_space-FSLMNI152_res-2mm_desc-300Parcels17NetworksOrder.nii.gz: Avg
+    /cpac_templates/Schaefer2018_space-FSLMNI152_res-2mm_desc-400Parcels17NetworksOrder.nii.gz: Avg
+    /ndmg_atlases/label/Human/Talairach_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Brodmann_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Desikan_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Glasser_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Slab907_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Yeo-17-liberal_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Yeo-17_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Yeo-7-liberal_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+    /ndmg_atlases/label/Human/Yeo-7_space-MNI152NLin6_res-1x1x1.nii.gz: Avg
+
+  # Functional time-series and ROI realignment method: ['ROI_to_func'] or ['func_to_ROI']
+  # 'ROI_to_func' will realign the atlas/ROI to functional space (fast)
+  # 'func_to_ROI' will realign the functional time series to the atlas/ROI space
+  #
+  #     NOTE: in rare cases, realigning the ROI to the functional space may
+  #           result in small misalignments for very small ROIs - please double
+  #           check your data if you see issues
+  realignment: 'ROI_to_func'
+
+  connectivity_matrix:
+    # Create a connectivity matrix from timeseries data
+
+    # Options:
+    #  ['AFNI', 'Nilearn', 'ndmg']
+    using:
+      - Nilearn
+      - ndmg
+    # Options:
+    #  ['Pearson', 'Partial']
+    # Note: These options are not configurable for ndmg, which will ignore these options
+    measure:
+      - Pearson
+      - Partial
+
+
+seed_based_correlation_analysis:
+
+  # SCA - Seed-Based Correlation Analysis
+  # For each extracted ROI Average time series, CPAC will generate a whole-brain correlation map.
+  # It should be noted that for a given seed/ROI, SCA maps for ROI Average time series will be the same.
+  run: Off
+
+  # Enter paths to region-of-interest (ROI) NIFTI files (.nii or .nii.gz) to be used for seed-based correlation analysis, and then select which types of analyses to run.
+  # Denote which analyses to run for each ROI path by listing the names below. For example, if you wish to run Avg and MultReg, you would enter: '/path/to/ROI.nii.gz': Avg, MultReg
+  # available analyses:
+  #   /path/to/atlas.nii.gz: Avg, DualReg, MultReg
+  sca_roi_paths:
+    /cpac_templates/PNAS_Smith09_rsn10.nii.gz: DualReg
+    /cpac_templates/CC400.nii.gz: Avg, MultReg
+    /cpac_templates/ez_mask_pad.nii.gz: Avg, MultReg
+    /cpac_templates/aal_mask_pad.nii.gz: Avg, MultReg
+    /cpac_templates/CC200.nii.gz: Avg, MultReg
+    /cpac_templates/tt_mask_pad.nii.gz: Avg, MultReg
+    /cpac_templates/ho_mask_pad.nii.gz: Avg, MultReg
+    /cpac_templates/rois_3mm.nii.gz: Avg, MultReg
+
+  # Normalize each time series before running Dual Regression SCA.
+  norm_timeseries_for_DR: True
+
+
+amplitude_low_frequency_fluctuation:
+
+  # ALFF & f/ALFF
+  # Calculate Amplitude of Low Frequency Fluctuations (ALFF) and fractional ALFF (f/ALFF) for all voxels.
+  run: On
+
+  # space: Template or Native
+  target_space: ['Native']
+
+  # Frequency cutoff (in Hz) for the high-pass filter used when calculating f/ALFF.
+  highpass_cutoff: [0.01]
+
+  # Frequency cutoff (in Hz) for the low-pass filter used when calculating f/ALFF
+  lowpass_cutoff: [0.1]
+
+
+regional_homogeneity:
+
+  # ReHo
+  # Calculate Regional Homogeneity (ReHo) for all voxels.
+  run: On
+
+  # space: Template or Native
+  target_space: ['Native']
+
+  # Number of neighboring voxels used when calculating ReHo
+  # 7 (Faces)
+  # 19 (Faces + Edges)
+  # 27 (Faces + Edges + Corners)
+  cluster_size: 27
+
+
+voxel_mirrored_homotopic_connectivity:
+
+  # VMHC
+  # Calculate Voxel-mirrored Homotopic Connectivity (VMHC) for all voxels.
+  run: Off
+
+  symmetric_registration:
+
+    # Included as part of the 'Image Resource Files' package available on the Install page of the User Guide.
+    # It is not necessary to change this path unless you intend to use a non-standard symmetric template.
+    T1w_brain_template_symmetric: $FSLDIR/data/standard/MNI152_T1_${resolution_for_anat}_brain_symmetric.nii.gz
+
+    # Included as part of the 'Image Resource Files' package available on the Install page of the User Guide.
+    # It is not necessary to change this path unless you intend to use a non-standard symmetric template.
+    T1w_brain_template_symmetric_funcreg: $FSLDIR/data/standard/MNI152_T1_${func_resolution}_brain_symmetric.nii.gz
+
+    # A reference symmetric brain template for resampling
+    T1w_brain_template_symmetric_for_resample: $FSLDIR/data/standard/MNI152_T1_1mm_brain_symmetric.nii.gz
+
+    # Included as part of the 'Image Resource Files' package available on the Install page of the User Guide.
+    # It is not necessary to change this path unless you intend to use a non-standard symmetric template.
+    T1w_template_symmetric: $FSLDIR/data/standard/MNI152_T1_${resolution_for_anat}_symmetric.nii.gz
+
+    # Included as part of the 'Image Resource Files' package available on the Install page of the User Guide.
+    # It is not necessary to change this path unless you intend to use a non-standard symmetric template.
+    T1w_template_symmetric_funcreg: $FSLDIR/data/standard/MNI152_T1_${func_resolution}_symmetric.nii.gz
+
+    # A reference symmetric skull template for resampling
+    T1w_template_symmetric_for_resample: $FSLDIR/data/standard/MNI152_T1_1mm_symmetric.nii.gz
+
+    # Included as part of the 'Image Resource Files' package available on the Install page of the User Guide.
+    # It is not necessary to change this path unless you intend to use a non-standard symmetric template.
+    dilated_symmetric_brain_mask: $FSLDIR/data/standard/MNI152_T1_${resolution_for_anat}_brain_mask_symmetric_dil.nii.gz
+
+    # A reference symmetric brain mask template for resampling
+    dilated_symmetric_brain_mask_for_resample: $FSLDIR/data/standard/MNI152_T1_1mm_brain_mask_symmetric_dil.nii.gz
+
+
+network_centrality:
+
+  # Calculate Degree, Eigenvector Centrality, or Functional Connectivity Density.
+  run: Off
+
+  # Maximum amount of RAM (in GB) to be used when calculating Degree Centrality.
+  # Calculating Eigenvector Centrality will require additional memory based on the size of the mask or number of ROI nodes.
+  memory_allocation:  1.0
+
+  # Full path to a NIFTI file describing the mask. Centrality will be calculated for all voxels within the mask.
+  template_specification_file:  /cpac_templates/Mask_ABIDE_85Percent_GM.nii.gz
+
+  degree_centrality:
+
+    # Enable/Disable degree centrality by selecting the connectivity weights
+    #   weight_options: ['Binarized', 'Weighted']
+    # disable this type of centrality with:
+    #   weight_options: []
+    weight_options:  ['Binarized', 'Weighted']
+
+    # Select the type of threshold used when creating the degree centrality adjacency matrix.
+    # options:
+    #   'Significance threshold', 'Sparsity threshold', 'Correlation threshold'
+    correlation_threshold_option: 'Sparsity threshold'
+
+    # Based on the Threshold Type selected above, enter a Threshold Value.
+    # P-value for Significance Threshold
+    # Sparsity value for Sparsity Threshold
+    # Pearson's r value for Correlation Threshold
+    correlation_threshold: 0.001
+
+  eigenvector_centrality:
+
+    # Enable/Disable eigenvector centrality by selecting the connectivity weights
+    #   weight_options: ['Binarized', 'Weighted']
+    # disable this type of centrality with:
+    #   weight_options: []
+    weight_options: ['Weighted']
+
+    # Select the type of threshold used when creating the eigenvector centrality adjacency matrix.
+    # options:
+    #   'Significance threshold', 'Sparsity threshold', 'Correlation threshold'
+    correlation_threshold_option: 'Sparsity threshold'
+
+    # Based on the Threshold Type selected above, enter a Threshold Value.
+    # P-value for Significance Threshold
+    # Sparsity value for Sparsity Threshold
+    # Pearson's r value for Correlation Threshold
+    correlation_threshold: 0.001
+
+  local_functional_connectivity_density:
+
+    # Enable/Disable lFCD by selecting the connectivity weights
+    #   weight_options: ['Binarized', 'Weighted']
+    # disable this type of centrality with:
+    #   weight_options: []
+    weight_options: ['Binarized', 'Weighted']
+
+    # Select the type of threshold used when creating the lFCD adjacency matrix.
+    # options:
+    #   'Significance threshold', 'Correlation threshold'
+    correlation_threshold_option: 'Correlation threshold'
+
+    # Based on the Threshold Type selected above, enter a Threshold Value.
+    # P-value for Significance Threshold
+    # Sparsity value for Sparsity Threshold
+    # Pearson's r value for Correlation Threshold
+    correlation_threshold: 0.6
+
+
+# PACKAGE INTEGRATIONS
+# --------------------
+PyPEER:
+
+  # Training of eye-estimation models. Commonly used for movies data/naturalistic viewing.
+  run: Off
+
+  # PEER scan names to use for training
+  # Example: ['peer_run-1', 'peer_run-2']
+  eye_scan_names: []
+
+  # Naturalistic viewing data scan names to use for eye estimation
+  # Example: ['movieDM']
+  data_scan_names: []
+
+  # Template-space eye mask
+  eye_mask_path: $FSLDIR/data/standard/MNI152_T1_${func_resolution}_eye_mask.nii.gz
+
+  # PyPEER Stimulus File Path
+  # This is a file describing the stimulus locations from the calibration sequence.
+  stimulus_path: None
+
+  minimal_nuisance_correction:
+
+    # PyPEER Minimal nuisance regression
+    # Note: PyPEER employs minimal preprocessing - these choices do not reflect what runs in the main pipeline.
+    #       PyPEER uses non-nuisance-regressed data from the main pipeline.
+
+    # Global signal regression (PyPEER only)
+    peer_gsr: False
+
+    # Motion scrubbing (PyPEER only)
+    peer_scrub: False
+
+    # Motion scrubbing threshold (PyPEER only)
+    scrub_thresh: 0.2
