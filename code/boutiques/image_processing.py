@@ -1,5 +1,6 @@
-from nguyenetal.workflows import anat_preprocessing_wf, confound_reg_wf, func_preprocessing_wf, static_measures_wf 
 import glob, re, argparse, sys, os
+#sys.path.insert(0, '/home/nguyen-etal-2021/nguyenetal/workflows')
+from nguyenetal.workflows import anat_preprocessing_wf, confound_reg_wf, func_preprocessing_wf, static_measures_wf 
 from os.path import join 
 
 def run_pipeline(
@@ -63,15 +64,22 @@ def run_pipeline(
 		data_dir=f'{base_dir}/outputs/{pipeline}'
 		output_dir=f'{base_dir}/outputs/{pipeline}'
 
-		wm_csf_template= join('anat_preproc', 'sub-{subject_id}', 
+		if pipeline == 'reproduction_pipeline-fsl_seg':
+			software='fsl'
+		elif pipeline == 'reproduction_pipeline-afni_seg':
+			software = 'afni'
+		else:
+			software='no-anat'
+
+		wm_csf_template= join(f'anat_preproc_{software}', 'sub-{subject_id}', 
 										  'sub-{subject_id}_task-rest_desc-confounds_timeseries.tsv'
 										 )
 
-		motion_regressors_template = join('func_preproc','_subject_id_{subject_id}', 
+		motion_regressors_template = join('func_preproc','sub-{subject_id}', 
 										  'sub-{subject_id}_task-rest_bold_mcf.nii.gz.par'
 										 )
 
-		func_file_template = join('func_preproc', '_subject_id_{subject_id}',
+		func_file_template = join('func_preproc', 'sub-{subject_id}',
 								  'sub-{subject_id}_task-rest_bold_mcf_masked_trans.nii.gz'
 								 )
 
@@ -95,8 +103,8 @@ def run_pipeline(
 
 		func_file_template = join('denoising' ,'sub-{subject_id}',
 					'sub-{subject_id}_task-rest_bold_mcf_masked_trans_regfilt.nii.gz')
-		mask_file_template = join('func_preproc', '_subject_id_{subject_id}',
-				    'sub-{subject_id}_task-rest_bold_mcf_mask_trans_mask.nii.gz')
+		mask_file_template = join('func_preproc', 'sub-{subject_id}',
+				    'sub-{subject_id}_task-rest_bold_mcf_masked_trans_mask.nii.gz')
 
 		cereb_atlas = f'{base_dir}/inputs/atlases/Cerebellum-MNIfnirt-maxprob-thr25-2mm.nii.gz'
 		striatum_atlas = f'{base_dir}/inputs/atlases/striatum-con-label-thr25-7sub-2mm.nii.gz'

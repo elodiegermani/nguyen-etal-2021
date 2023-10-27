@@ -503,7 +503,7 @@ def compute_summary_features(
     if timepoint=='baseline':
         df_summary_values.loc['Mean MDS-UPDRS at timepoint'] = '-'
 
-    return df_summary_values
+    return df_summary_values, df_summary
 
 # How to deal with NaNs ? 
 def impute_mean(

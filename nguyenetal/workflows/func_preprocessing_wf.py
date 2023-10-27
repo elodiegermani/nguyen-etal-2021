@@ -250,7 +250,7 @@ class Functional_Preprocessing():
 		)
 		# Global workflow 
 		preproc_wf = Workflow(name='preproc_wf')
-		preproc_wf.base_dir = self.output_dir
+		preproc_wf.base_dir = os.path.join(self.output_dir, 'working_dir')
 
 		preproc_wf.connect( # Connection between nodes
 			[

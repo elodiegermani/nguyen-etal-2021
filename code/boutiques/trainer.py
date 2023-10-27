@@ -18,15 +18,15 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
-	timepoints = [int(item) for item in args.timepoints.split(',')]
-	features = [int(item) for item in args.features.split(',')]
-	atlases = [int(item) for item in args.atlases.split(',')]
+	timepoints = [str(item) for item in args.timepoints.split(',')]
+	features = [str(item) for item in args.features.split(',')]
+	atlases = [str(item) for item in args.atlases.split(',')]
 
 	print(args.pipeline, args.specific, timepoints, features, atlases)
-	train_model.train_ml_models(pipeline, 
-                    specific, 
-                    timepoints = ['baseline', '1y', '2y', '4y'], 
-                    features = ['zfalff', 'zReHo'], 
-                    atlases = ['schaefer', 'basc197', 'basc444'])
+	# train_model.train_ml_models(pipeline, 
+    #                 specific, 
+    #                 timepoints = ['baseline', '1y', '2y', '4y'], 
+    #                 features = ['zfalff', 'zReHo'], 
+    #                 atlases = ['schaefer', 'basc197', 'basc444'])
 
 
