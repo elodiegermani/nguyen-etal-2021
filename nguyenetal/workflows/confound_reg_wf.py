@@ -242,6 +242,7 @@ class NoiseRegression_Pipeline:
                                                 ('wm_csf', 'wm_csf_file')]),
                 (ica_motion_regressors, merge_regressors, [('df_motion_timeseries_fpath', 'ica_file')]),
                 (info_source, merge_regressors, [('subject_id', 'subject_id')]),
+                (merge_regressors, data_sink, [('df_fpath', 'denoising.@confounds')]),
                 (merge_regressors, regfilter, [('df_fpath', 'design_file')]),
                 (regfilter, data_sink, [('out_file', 'denoising.@filtered')])
             ]

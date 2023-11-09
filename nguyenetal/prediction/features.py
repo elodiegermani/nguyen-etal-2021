@@ -1,7 +1,34 @@
 import pandas as pd
 import os
 
-def save_features(pipeline, features_dict, outcome_dict, specific=None, features_dir='features'):
+def save_features(
+    pipeline:str, 
+    features_dict:dict, 
+    outcome_dict:dict, 
+    specific:str='', 
+    features_dir:str='features'):
+    '''
+    Save features for training. 
+
+    Parameters
+    ----------
+
+    pipeline: str
+        name of the pipeline used 
+
+    features_dict: dict of pd.DataFrame
+        dict. of features to save with keys=timepoint, value=dataframe.
+
+    outcome_dict: dict of pd.DataFrame
+        outcome target
+
+    specific: str
+        if variation was applied
+
+    features_dir: str
+        where imaging features dataframe are stored.
+    '''
+
     for timepoint in list(features_dict.keys()):
         for atlas in ['schaefer', 'basc197', 'basc444']:
             for feature in ['alff', 'falff', 'ReHo', 'zalff', 'zfalff', 'zReHo']:
@@ -33,10 +60,11 @@ def save_features(pipeline, features_dict, outcome_dict, specific=None, features
                 else: 
                     df_all_features = df_features
                     output_dir=f'./outputs/{pipeline}/prediction_scores/prediction-{timepoint}'
-
+                
                 if specific:
                     output_dir += specific
 
+                # Save features
                 if not os.path.isdir(output_dir):
                     os.mkdir(output_dir)
 

@@ -10,6 +10,7 @@ from nipype.interfaces.robex.preprocess import RobexSegment
 from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.io import SelectFiles, DataSink
 from os.path import join
+import os
 
 def select_volume(
 	filename : str, 
@@ -239,7 +240,7 @@ class Functional_Preprocessing():
 		
 		# Registration 
 		non_linear_registration_func = self.get_reg_wf('func', 'func_reg_wf')
-		non_linear_registration_func.inputs.inputnode.template=fsl.Info.standard_image('MNI152_T1_2mm_brain.nii.gz')
+		non_linear_registration_func.inputs.inputnode.template='/home/nguyen-etal-2021/inputs/template/pl-MNI152NLin2009cAsym_res-02_desc-fMRIPrep_boldref.nii.gz'
 		
 
 		# Compute mask after preprocessing 

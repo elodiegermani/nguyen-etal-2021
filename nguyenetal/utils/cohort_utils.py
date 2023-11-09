@@ -304,6 +304,7 @@ def get_fMRI_cohort(
 def get_scores_dataframe(
     utils:livingpark_utils.LivingParkUtils,
     df_fMRI_subset: pd.DataFrame,
+    use_clean: bool=True
     ) -> pd.DataFrame:
     """
     Compute assesment file with clinical scores to filter the cohort. 
@@ -315,6 +316,9 @@ def get_scores_dataframe(
 
     df_fMRI_subset : pd.DataFrame
         dataframe of participants having an fMRI image
+    
+    use_clean : bool
+        True to use cleaned UPDRS-III file
 
     Returns
     -------
@@ -328,7 +332,12 @@ def get_scores_dataframe(
     df_updrs1a = load_ppmi_csv(utils, FILENAME_UPDRS1A, convert_int = [COL_UPDRS1A])
     df_updrs1b = load_ppmi_csv(utils, FILENAME_UPDRS1B, convert_int = [COL_UPDRS1B])
     df_updrs2 = load_ppmi_csv(utils, FILENAME_UPDRS2, convert_int = [COL_UPDRS2])
-    df_updrs3 = load_ppmi_csv(utils, FILENAME_UPDRS3_CLEAN, convert_int = [COL_UPDRS3])
+
+    if use_clean:
+        df_updrs3 = load_ppmi_csv(utils, FILENAME_UPDRS3_CLEAN, convert_int = [COL_UPDRS3])
+    else: 
+        df_updrs3 = load_ppmi_csv(utils, FILENAME_UPDRS3, convert_int = [COL_UPDRS3])
+        
     df_updrs4 = load_ppmi_csv(utils, FILENAME_UPDRS4, convert_int = [COL_UPDRS4], cols_to_impute=COL_UPDRS4)
 
     df_moca = load_ppmi_csv(utils, FILENAME_MOCA, convert_int = [COL_MOCA])

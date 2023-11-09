@@ -3,7 +3,7 @@
     "description": "Tool for training machine learning models.",
     "tool-version": "elodiegermani/nguyen-etal-2021:latest nguyen-etal-2021:latest",
     "schema-version": "0.5",
-    "command-line": "source activate neuro && export PYTHONPATH=$PYTHONPATH:/home/nguyen-etal-2021 && python3 ./code/boutiques/trainer.py [PIPELINE] [SPECIFIC] [TIMEPOINTS] [FEATURES] [ATLASES]",
+    "command-line": "source activate neuro && export PYTHONPATH=$PYTHONPATH:/home/nguyen-etal-2021 && python3 /home/nguyen-etal-2021/code/boutiques/trainer.py [PIPELINE] [SPECIFIC] [TIMEPOINTS] [FEATURES] [ATLASES]",
     "container-image": {
         "image": "elodiegermani/nguyen-etal-2021",
         "index": "docker:elodiegermani/nguyen-etal-2021:latest",
@@ -20,7 +20,9 @@
             "value-choices": [
                 "reproduction_pipeline-afni_seg",
                 "reproduction_pipeline-fsl_seg",
-                "reproduction_pipeline-no_anat"
+                "reproduction_pipeline-no_anat",
+                "fmriprep_pipeline",
+                "no_imaging_features"
             ],
             "command-line-flag": "--pipeline"
         },

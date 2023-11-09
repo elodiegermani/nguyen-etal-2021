@@ -71,6 +71,11 @@ def cross_validation_results(pipeline, feature, timepoint, specific=None):
     return results_df
 
 
+def rsquare(true, predict):
+    ssTot = np.sum(np.square(true - np.mean(true)))
+    ssRes = np.sum(np.square(true - predict))
+    return 1 - (ssRes / (ssTot + np.finfo(float).eps))
+
 def prediction_results(df, threshold, select_across='folds'):
     best_model_df = pd.DataFrame()
     
@@ -87,7 +92,8 @@ def prediction_results(df, threshold, select_across='folds'):
         trueneg, falsepos, falseneg, truepos = metrics.confusion_matrix(best_model_df['True class'], 
                                          best_model_df['Predicted class'] ).ravel()
         
-        r_square = metrics.r2_score(best_model_df['Target'], best_model_df['Prediction'])
+        #r_square = metrics.r2_score(best_model_df['Target'], best_model_df['Prediction'])
+        r_square = rsquare(best_model_df['Target'], best_model_df['Prediction'])
         rmse = np.sqrt(metrics.mean_squared_error(best_model_df['Target'], best_model_df['Prediction']))
         auc = metrics.roc_auc_score(best_model_df['True class'], best_model_df['Predicted class'])
         ppv = metrics.precision_score(best_model_df['True class'], best_model_df['Predicted class'])
@@ -119,6 +125,7 @@ def prediction_results(df, threshold, select_across='folds'):
 
                 trueneg, falsepos, falseneg, truepos = metrics.confusion_matrix(model_atlas_df['True class'], 
                                                 model_atlas_df['Predicted class'] ).ravel()
+                #r_square = rsquare(model_atlas_df['Target'], model_atlas_df['Prediction'])
                 r_square = metrics.r2_score(model_atlas_df['Target'], model_atlas_df['Prediction'])
                 rmse = np.sqrt(metrics.mean_squared_error(model_atlas_df['Target'], model_atlas_df['Prediction']))
                 auc = metrics.roc_auc_score(model_atlas_df['True class'], model_atlas_df['Predicted class'])

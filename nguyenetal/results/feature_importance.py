@@ -41,8 +41,41 @@ dict_clin_labels = {'AGE_AT_VISIT': 'Age',
 'DOMSIDE_LEFT': 'Dominant left',
 'DOMSIDE_BOTH': 'Dominant both'}
 
-def get_features_importance(model_file, roi_labels,
-                  target, data, b_delta=False, importance_attr='coef_'):
+def get_features_importance(
+    model_file:str, 
+    roi_labels:list,
+    target:pd.DataFrame, 
+    data:pd.DataFrame, 
+    importance_attr:str='coef_'):
+
+    '''
+    Computes the dataframe with feature importance to be plotted after. 
+
+    Parameters
+    ----------
+
+    model_file:str
+        path to model saved after training
+
+    roi_labels: list
+        list of labels for brain regions (computed using utils/atlas_labels.py)
+
+    target: pd.DataFrame
+        outcome measurements
+
+    data: pd.DataFrame
+        features
+
+    importance_attr:str
+        whether to use coef or gini.
+
+    Returns
+    -------
+
+    df_importance: pd.DataFrame
+        dataframe with values of feature importance
+
+    '''
     
     n_rois = len(roi_labels) 
     clin_labels = [dict_clin_labels[s] for s in data.columns[n_rois:]] # Only clinical labels
@@ -80,7 +113,23 @@ def get_features_importance(model_file, roi_labels,
 
     return df_importance 
 
-def plot_features_importance(df_importance, n_features_plot):
+def plot_features_importance(
+    df_importance:pd.DataFrame, 
+    n_features_plot:int
+    ):
+
+    '''
+    Plot the features
+
+    Parameters
+    ----------
+    df_importance:pd.DataFrame
+        dataframe of features and importance value
+
+    n_features_plot:int
+        n. of features to plot.
+    '''
+
     fig, axis = plt.subplots(1, 1, figsize=(8, int(0.5*n_features_plot)))
     bars = sns.barplot(y='Feature', x='Feature Importance', hue='Correlation',
                        data=df_importance.sort_values('Feature Importance', 
@@ -99,7 +148,26 @@ def plot_features_importance(df_importance, n_features_plot):
 
     return fig
 
-def _values_to_img(val_array, atlas_img):
+def _values_to_img(
+    val_array:np.array, 
+    atlas_img:nib.Nifti1Image):
+    '''
+    Build an image of the atlas with values associated with the feature importance of this region. 
+
+    Parameters
+    ----------
+        val_array:np.array
+            Array of feature value. 
+
+        atlas_img:nib.Nifti1Image
+            Image of the atlas.
+
+    Returns
+    -------
+        nib.Nifti1Image
+            image with values for brain regions replaced with feature importance. 
+
+    '''
     atlas_array = atlas_img.get_fdata()
     val_img_array = np.zeros_like(atlas_array, dtype=np.float64)
 
@@ -111,7 +179,33 @@ def _values_to_img(val_array, atlas_img):
 
     return image.new_img_like(data=val_img_array, ref_niimg=atlas_img)
 
-def plot_brain_features_importance(df_importance, roi_labels, atlas, n_features):
+def plot_brain_features_importance(
+    df_importance, 
+    roi_labels, 
+    atlas, 
+    n_features):
+    '''
+    Parameters
+    ----------
+    df_importance:pd.DataFrame
+        dataframe of features and importance value
+
+    n_features:int
+        n. of features to plot.
+
+    roi_labels: list
+        list of labels for brain regions (computed using utils/atlas_labels.py)
+    
+    atlas: str
+        which atlas to use. one of ['basc197','basc444', 'schaefer']
+
+    Returns
+    -------
+
+    fig: plt.Figure
+        figure with brain feature importance
+
+    '''
     basc197_atlas = datasets.fetch_atlas_basc_multiscale_2015(version="sym", resolution=197)['map']
     basc444_atlas = datasets.fetch_atlas_basc_multiscale_2015(version="sym", resolution=444)['map']
     schaefer_atlas = datasets.fetch_atlas_schaefer_2018(100, resolution_mm=2)['maps']
@@ -168,7 +262,21 @@ model_dict = {'ElasticNet':'ElasticNet',
              'GradientBoostingRegressor': 'Gradient Boosting',
              'RandomForestRegressor': 'Random Forest'}
 
-def plot_all_feature_importance(global_df, pipeline, specific):
+def plot_all_feature_importance(
+    global_df:pd.DataFrame, 
+    pipeline:str, 
+    specific:str):
+
+    '''
+    Parameters
+    ----------
+    global_df:pd.DataFrame
+        dataframe of prediction scores to find best model and best atlas
+
+    pipeline: str
+
+    specific: str
+    '''
     for timepoint, t in timepoint_dict.items():
 
         for feature, f in feature_dict.items():
@@ -218,7 +326,7 @@ def plot_all_feature_importance(global_df, pipeline, specific):
                 importance_attr = 'feature_importances_'
 
             df_importance = get_features_importance(model_file, roi_labels,
-                              target, data, b_delta=False, importance_attr=importance_attr,
+                              target, data, importance_attr=importance_attr,
                               )
 
             fig = plot_features_importance(df_importance,n_features_plot=10)

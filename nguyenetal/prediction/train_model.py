@@ -7,11 +7,34 @@ from nguyenetal.results import results
 import pandas as pd
 import numpy as np
 
-def train_ml_models(pipeline, 
-                    specific, 
-                    timepoints = ['baseline', '1y', '2y', '4y'], 
-                    features = ['zfalff', 'zReHo'], 
-                    atlases = ['schaefer', 'basc197', 'basc444']):
+def train_ml_models(
+    pipeline:str, 
+    specific:str, 
+    timepoints:list= ['baseline', '1y', '2y', '4y'], 
+    features:list= ['zfalff', 'zReHo'], 
+    atlases:list= ['schaefer', 'basc197', 'basc444']):
+    '''
+    Train machine learning models on features and timepoints. Requires that features and outcome were saved before. 
+    Store results for each timepoint x feature combination.
+
+    Parameters
+    ----------
+
+    pipeline: str
+        pipeline to evaluate
+
+    specific: str
+        if specific variation was applied
+
+    timepoints: list
+        list of timepoints to train models on
+
+    features: list
+        list of features to train models on
+
+    atlases: list
+        list of atlases to train models on 
+    '''
 
     for timepoint in timepoints:
         for feature in features:
