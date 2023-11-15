@@ -1,0 +1,33 @@
+,MDS-UPDRS Prediction target,Feature,Type,Best performing model,Best performing parcellation,R2,RMSE,AUC,PPV,NPV,Spec.,Sens.
+1,Baseline,fALFF,original,Gradient Boosting,Schaefer,0.242,14.006,0.668,60.0%,74.0%,75.5%,58.1%
+0,Baseline,fALFF,reproduction - best,Gradient Boosting,BASC197,0.17,14.59,0.584,51.7%,66.0%,71.4%,45.5%
+0,Baseline,fALFF,reproduction - nested cv,Gradient Boosting,BASC197,0.126,14.98,0.589,51.6%,66.7%,69.4%,48.5%
+0,Baseline,fALFF,reproduction - same,Gradient Boosting,Schaefer,-0.012,16.12,0.579,51.9%,65.5%,73.5%,42.4%
+0,Baseline,ReHo,original,Gradient Boosting,Schaefer,0.304,13.415,0.674,59.4%,75.0%,73.5%,61.3%
+0,Baseline,ReHo,reproduction - best,ElasticNet,BASC444,0.117,15.05,0.635,55.9%,70.8%,69.4%,57.6%
+0,Baseline,ReHo,reproduction - nested cv,ElasticNet,BASC444,0.011,15.93,0.594,51.5%,67.3%,67.3%,51.5%
+0,Baseline,ReHo,reproduction - same,Gradient Boosting,Schaefer,-0.022,16.19,0.564,48.4%,64.7%,67.3%,45.5%
+3,Year 1,fALFF,original,ElasticNet,Schaefer,0.558,14.256,0.753,70.4%,80.0%,71.4%,79.2%
+0,Year 1,fALFF,reproduction - best,Gradient Boosting,Schaefer,0.538,15.34,0.772,72.4%,82.6%,70.4%,84.0%
+0,Year 1,fALFF,reproduction - nested cv,Gradient Boosting,BASC444,0.538,15.33,0.752,71.4%,79.2%,70.4%,80.0%
+0,Year 1,fALFF,reproduction - same,ElasticNet,Schaefer,0.359,18.06,0.755,68.8%,85.0%,63.0%,88.0%
+2,Year 1,ReHo,original,ElasticNet,Schaefer,0.453,15.861,0.753,70.4%,80.0%,71.4%,79.2%
+0,Year 1,ReHo,reproduction - best,Gradient Boosting,Schaefer,0.456,16.64,0.732,70.4%,76.0%,70.4%,76.0%
+0,Year 1,ReHo,reproduction - nested cv,Random Forest,Schaefer,0.371,17.9,0.806,82.6%,79.3%,85.2%,76.0%
+0,Year 1,ReHo,reproduction - same,ElasticNet,Schaefer,0.455,16.66,0.639,59.4%,70.0%,51.9%,76.0%
+5,Year 2,fALFF,original,ElasticNet,Schaefer,0.463,13.426,0.765,78.6%,76.5%,68.4%,84.6%
+0,Year 2,fALFF,reproduction - best,Random Forest,BASC197,0.276,17.35,0.581,64.9%,52.6%,43.5%,72.7%
+0,Year 2,fALFF,reproduction - nested cv,Random Forest,BASC197,0.116,19.18,0.516,60.0%,43.8%,30.4%,72.7%
+0,Year 2,fALFF,reproduction - same,ElasticNet,Schaefer,0.19,18.36,0.533,60.9%,50.0%,21.7%,84.8%
+4,Year 2,ReHo,original,ElasticNet,Schaefer,0.471,13.322,0.739,75.9%,75.0%,63.2%,84.6%
+0,Year 2,ReHo,reproduction - best,ElasticNet,Schaefer,0.278,17.33,0.598,65.1%,61.5%,34.8%,84.8%
+0,Year 2,ReHo,reproduction - nested cv,ElasticNet,BASC197,0.155,18.75,0.626,67.5%,62.5%,43.5%,81.8%
+0,Year 2,ReHo,reproduction - same,ElasticNet,Schaefer,0.278,17.33,0.598,65.1%,61.5%,34.8%,84.8%
+7,Year 4,fALFF,original,SVM,BASC197,0.152,14.957,0.636,64.7%,62.5%,62.5%,64.7%
+0,Year 4,fALFF,reproduction - best,Gradient Boosting,Schaefer,0.438,15.88,0.799,83.3%,76.5%,76.5%,83.3%
+0,Year 4,fALFF,reproduction - nested cv,Gradient Boosting,Schaefer,0.399,16.41,0.757,81.8%,68.4%,76.5%,75.0%
+0,Year 4,fALFF,reproduction - same,SVM,BASC197,0.002,21.14,0.699,75.0%,64.7%,64.7%,75.0%
+6,Year 4,ReHo,original,SVM,BASC197,0.255,14.015,0.699,73.3%,66.7%,75.0%,64.7%
+0,Year 4,ReHo,reproduction - best,Gradient Boosting,BASC197,0.456,15.61,0.645,73.7%,54.5%,70.6%,58.3%
+0,Year 4,ReHo,reproduction - nested cv,ElasticNet,BASC197,0.308,17.62,0.678,73.9%,61.1%,64.7%,70.8%
+0,Year 4,ReHo,reproduction - same,SVM,BASC197,0.108,20.0,0.627,69.6%,55.6%,58.8%,66.7%

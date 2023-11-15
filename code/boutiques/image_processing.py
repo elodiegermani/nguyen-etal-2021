@@ -124,13 +124,25 @@ def run_pipeline(
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--pipeline', '-p', type=str, choices = ['reproduction_pipeline-afni_seg', 
+	parser.add_argument('--pipeline', '-p', 
+		type=str, 
+		choices = [
+		'reproduction_pipeline-afni_seg', 
 		'reproduction_pipeline-fsl_seg', 
-		'reproduction_pipeline-no_anat'], 
+		'reproduction_pipeline-no_anat',
+		], 
 		help='Pre-processing pipeline')
+
 	parser.add_argument('--step', '-s', type=str, 
-		choices = ['func', 'anat', 'confound', 'feature', 'ica'], 
+		choices = [
+		'func',
+		'anat', 
+		'confound', 
+		'feature', 
+		'ica'
+		], 
 		help='Which step to run')
+
 	parser.add_argument('--base_dir', '-b', type=str, help='Absolute path to this directory')
 	parser.add_argument('--subject_list', '-l', type=str, help='Subject list')
 

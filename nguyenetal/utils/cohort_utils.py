@@ -390,6 +390,139 @@ def to_1_decimal_str(
 ) -> str:
     return str(round(f, 1))
 
+def get_cohort_baseline(
+    df_fMRI_subset:pd.DataFrame, 
+    df_cohort_assessments:pd.DataFrame
+):
+    '''
+    Function to filter fMRI and score files to keep only subjects who had a an fMRI and a UPDRS-III score at the same visit. 
+
+    Parameters
+    ----------
+        df_fMRI_subset: pd.DataFrame
+            DataFrame obtained with get_fMRI_cohort.
+
+        df_cohort_assessments: pd.DataFrame
+            DataFrame with scores of the participants with an fMRI image. 
+
+    Returns
+    -------
+        df_global_cohort_baseline: pd.DataFrame
+            DataFrame with only selected participants and sessions.
+    '''
+    df_fMRI_cohort = pd.DataFrame()
+    # Go through score dataframe and for each line, check if participant name and visit name are in fMRI file
+    for i in range(len(df_cohort_assessments)):
+        df_fMRI_cohort = pd.concat([df_fMRI_cohort, 
+                            df_fMRI_subset[df_fMRI_subset[COL_PAT_ID] == df_cohort_assessments.iloc[i][COL_PAT_ID]]\
+                            [df_fMRI_subset[COL_VISIT_TYPE] == df_cohort_assessments.iloc[i][COL_VISIT_TYPE]]]
+                            )
+        
+    df_scores_cohort = pd.DataFrame()
+    # Same for fMRI dataset
+    for i in range(len(df_fMRI_subset)):
+        df_scores_cohort = pd.concat([df_scores_cohort, 
+                        df_cohort_assessments[df_cohort_assessments[COL_PAT_ID] == df_fMRI_subset.iloc[i][COL_PAT_ID]]\
+                        [df_cohort_assessments[COL_VISIT_TYPE] == df_fMRI_subset.iloc[i][COL_VISIT_TYPE]]]
+                        )
+
+    fMRI_cols_to_include = ['PATNO', 'Sex','COHORT_DEFINITION','EVENT_ID', 'INFODT', 'Age', 
+                        'Description', 'Imaging Protocol', 'Image ID']
+    scores_cols_to_include = ['PATNO', 'EVENT_ID','INFODT_SCORE', 'PDSTATE', 'PAG_NAME' ,'NP2PTOT', 'NP3TOT', 'NP1RTOT+NP1PTOT',
+           'NP4TOT', 'NHY','MCATOT', 'GDS_TOTAL', 'UPDRS_TOT']
+    
+    df_fMRI_cohort = df_fMRI_cohort.loc[:, fMRI_cols_to_include]
+    df_scores_cohort['INFODT_SCORE'] = df_scores_cohort['INFODT']
+    df_scores_cohort = df_scores_cohort.loc[:, scores_cols_to_include]
+    
+    # Merge important columns from both datasets
+    df_global_cohort = df_fMRI_cohort.merge(df_scores_cohort, on=[COL_PAT_ID, COL_VISIT_TYPE])
+    df_global_cohort = df_global_cohort.sort_values(by=['PATNO','INFODT'])
+
+    df_global_cohort_baseline = df_global_cohort.drop_duplicates(subset=COL_PAT_ID)
+    df_global_cohort_baseline = df_global_cohort_baseline[
+        df_global_cohort_baseline[COL_DATE_INFO] < pd.Timestamp(2020, 1, 1, 12)
+        ] # Removed due to the date of the study
+
+    return df_global_cohort_baseline
+
+def get_cohort_prediction(
+    df_global_cohort_baseline:pd.DataFrame, 
+    df_cohort_assessments:pd.DataFrame
+):
+    '''
+    Function to filter score files to keep only subjects who where included in baseline cohort and check if these participants 
+    also had a score 1 year, 2 years and 4 years after the baseline visit. 
+
+    Parameters
+    ----------
+        df_global_cohort_baseline: pd.DataFrame
+            DataFrame obtained with get_cohort_baseline.
+
+        df_cohort_assessments: pd.DataFrame
+            DataFrame with scores of the participants with an fMRI image. 
+
+    Returns
+    -------
+        df_global_1y: pd.DataFrame
+            DataFrame with only selected participants and sessions for 1y.
+        df_global_2y: pd.DataFrame
+            DataFrame with only selected participants and sessions for 2y.
+        df_global_4y: pd.DataFrame
+            DataFrame with only selected participants and sessions for 4y.
+
+    '''
+    # DF with outcome scores for every participants selected at baseline
+    df_global_cohort_pred = df_cohort_assessments[df_cohort_assessments\
+                                                  [COL_PAT_ID].isin(df_global_cohort_baseline[COL_PAT_ID].tolist())]
+    
+    # Filter by date due to the date of publication of the paper. 
+    df_global_cohort_pred = df_global_cohort_pred[df_global_cohort_pred[COL_DATE_INFO] < pd.Timestamp(2020, 1, 1, 12)]
+    
+    # Event taken as Baseline 
+    df_global_cohort_pred['BASELINE_DATE'] = [df_global_cohort_baseline['INFODT_SCORE']\
+                    [df_global_cohort_baseline[COL_PAT_ID] == df_global_cohort_pred[COL_PAT_ID].iloc[i]].iloc[0] \
+                                 for i in range(len(df_global_cohort_pred))]
+    
+    df_global_cohort_pred['BASELINE_DATE'] = df_global_cohort_pred['BASELINE_DATE'].dt.strftime('%y-%m')
+    df_global_cohort_pred['BASELINE_DATE'] = pd.to_datetime(df_global_cohort_pred['BASELINE_DATE'], format='%y-%m')
+    df_global_cohort_pred['INFODT'] = df_global_cohort_pred['INFODT'].dt.strftime('%y-%m')
+    df_global_cohort_pred['INFODT'] = pd.to_datetime(df_global_cohort_pred['INFODT'], format='%y-%m')
+
+    df_global_1y = pd.DataFrame()
+    df_global_2y = pd.DataFrame()
+    df_global_4y = pd.DataFrame()
+    
+    for sub in df_global_cohort_baseline['PATNO'].tolist():
+        df_subject = df_global_cohort_pred.loc[(df_global_cohort_pred['PATNO'] == sub)]
+    
+        if len(df_subject)==0:
+            continue
+
+        # Check for score at different time after baseline
+        df_global_1y = pd.concat([df_global_1y, 
+                df_subject.loc[((df_subject['INFODT'] >= (df_subject.iloc[0]['BASELINE_DATE'] + dt.timedelta(days=365 - 62))) &\
+                            (df_subject['INFODT'] <= (df_subject.iloc[0]['BASELINE_DATE'] + dt.timedelta(days=365 + 62))))]])
+    
+        df_global_2y = pd.concat([df_global_2y, 
+                df_subject.loc[((df_subject['INFODT'] >= (df_subject.iloc[0]['BASELINE_DATE'] + dt.timedelta(days=2*365 - 62))) &\
+                            (df_subject['INFODT'] <= (df_subject.iloc[0]['BASELINE_DATE'] + dt.timedelta(days=2*365 + 62))))]])
+        
+        df_global_4y = pd.concat([df_global_4y, 
+                df_subject.loc[((df_subject['INFODT'] >= (df_subject.iloc[0]['BASELINE_DATE'] + dt.timedelta(days=4*365 - 62))) &\
+                            (df_subject['INFODT'] <= (df_subject.iloc[0]['BASELINE_DATE'] + dt.timedelta(days=4*365 + 62))))]])
+            
+    df_global_1y = df_global_1y.drop_duplicates(['PATNO'])
+    df_global_1y = df_global_1y.merge(df_global_cohort_baseline[['PATNO','Sex']], on=['PATNO'])
+    
+    df_global_2y = df_global_2y.drop_duplicates(['PATNO'])
+    df_global_2y = df_global_2y.merge(df_global_cohort_baseline[['PATNO','Sex']], on=['PATNO'])
+    
+    df_global_4y = df_global_4y.drop_duplicates(['PATNO'])
+    df_global_4y = df_global_4y.merge(df_global_cohort_baseline[['PATNO','Sex']], on=['PATNO'])
+
+    return df_global_1y, df_global_2y, df_global_4y
+
 def compute_summary_features(
     df:pd.DataFrame, 
     utils:livingpark_utils.LivingParkUtils, 
@@ -514,238 +647,63 @@ def compute_summary_features(
 
     return df_summary_values, df_summary
 
-# How to deal with NaNs ? 
-def impute_mean(
-    df:pd.DataFrame, 
-    col_name:str, 
-    is_int:bool=False
-) -> pd.DataFrame:
-    """Impute missing values with mean values.
+def plot_summary_cohort(
+    df_cohort_baseline,
+    df_cohort_1y, 
+    df_cohort_2y,
+    df_cohort_4y,
+    utils
+):
+    '''
+    Compute summary features of the cohort at different timepoints based on the figure of the original paper. 
 
     Parameters
     ----------
-    df : pd.DataFrame
-        input dataframe
-    col_name : str | list
-        columns to impute
-    is_int : bool
-        return the int mean value if column contains only int values
+        df_cohort_baseline: pd.DataFrame
 
-    Returns
-    -------
-    pd.DataFrame
-        dataframe with imputed missing values
-    """
-    mean_value = df[col_name].mean()
-    if is_int:
-        mean_value = int(mean_value)
-    df[col_name].fillna(value=mean_value, inplace=True)
-    
-    return df
+        df_cohort_1y: pd.DataFrame
 
-def impute_zeros(
-    df:pd.DataFrame, 
-    col_name:str
-) -> pd.DataFrame:
-    """Impute missing values with 0 values.
+        df_cohort_2y: pd.DataFrame
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        input dataframe
-    col_name : str | list
-        columns to impute
+        df_cohort_4y: pd.DataFrame
 
-    Returns
-    -------
-    pd.DataFrame
-        dataframe with imputed missing values
-    """
-
-    df[col_name].fillna(value=0, inplace=True)
-    
-    return df
-
-def get_features(
-    df_baseline:pd.DataFrame, 
-    utils:livingpark_utils.LivingParkUtils, 
-    participants_list:list, 
-    timepoint:str='baseline', 
-    add_DOMSIDE:bool=False
-) -> pd.DataFrame:
-    """Gather features to train machine learning models. 
-
-    Parameters
-    ----------
-    df_baseline : pd.DataFrame
-        input dataframe with baseline values
-    utils : livingpark_utils.LivingParkUtils
+        utils : livingpark_utils.LivingParkUtils
         the notebook's LivingParkUtils instance
-    participants_list: list
-        list of participants to get features
-    timepoint : str
-        timepoint of the cohort to compute summary measures (one of 'baseline', '1y', '2y' and '4y')
-    add_DOMSIDE : bool
-        whether to include DOMSIDE column in the features
 
     Returns
     -------
-    pd.DataFrame
-        dataframe with all features
-    """
-    # Load necessary study files
-    df_pd_history = load_ppmi_csv(utils, FILENAME_PD_HISTORY)
-    df_demographics = load_ppmi_csv(utils, FILENAME_DEMOGRAPHICS)
-    df_socio = load_ppmi_csv(utils, FILENAME_SOCIO)
-    df_age = load_ppmi_csv(utils, FILENAME_AGE)
+        df_allyears_summary: pd.DataFrame
+    '''
+    df_allyears_summary = pd.DataFrame(columns = [('Baseline', 'Original'), ('Baseline', 'Replication'),
+                                                  ('Year 1', 'Original'), ('Year 1', 'Replication'), 
+                                                  ('Year 2', 'Original'), ('Year 2', 'Replication'), 
+                                                  ('Year 4', 'Original'), ('Year 4', 'Replication')])
+    
+    df_allyears_summary[('Baseline', 'Original')]=['95.1','2.4','3.7','1.2','67.0','89.0','62.1 ± 9.8',
+     '15.6 ± 3.0','770 ± 565','33.9 ± 15.8','-','26.7 ± 2.8','5.4 ± 1.4','1.8 ± 0.5']
+    df_allyears_summary[('Year 1', 'Original')] = ['94.4','1.9','5.6','0','68.5','85.2','61.9 ± 10.3',
+     '15.1 ± 3.2','808 ± 576','38.0 ± 20.9','39.2 ± 21.6','26.9 ± 3.2','5.4 ± 1.6','1.8 ± 0.5']
+    df_allyears_summary[('Year 2', 'Original')] = ['97.8','0','4.4','0','82.2','88.9','63.6 ± 9.2',
+     '15.1 ± 3.3','771 ± 506','40.2 ± 18.2','40.9 ± 18.5','26.7 ± 3.5','5.4 ± 1.2','1.8 ± 0.5']
+    df_allyears_summary[('Year 4', 'Original')] = ['97.0','0','3.0','0','75.8','87.9','59.5 ± 11.0',
+        '15.0 ± 3.4','532 ± 346','34.9 ± 15.7','35.9 ± 16.5','27.5 ± 2.3','5.4 ± 1.7','1.7 ± 0.5']
+    
+    df_allyears_summary[('Baseline', 'Replication')] = compute_summary_features(df_cohort_baseline, utils,
+                                                                    'baseline')[0].tolist()
+    df_allyears_summary[('Year 1', 'Replication')] = compute_summary_features(df_cohort_1y, utils,
+                                                                    '1Y', df_cohort_baseline)[0].tolist()
+    df_allyears_summary[('Year 2', 'Replication')] = compute_summary_features(df_cohort_2y, utils,
+                                                                    '2Y', df_cohort_baseline)[0].tolist()
+    df_allyears_summary[('Year 4', 'Replication')] = compute_summary_features(df_cohort_4y, utils,
+                                                                    '4Y', df_cohort_baseline)[0].tolist()
+    
+    df_allyears_summary.index = compute_summary_features(df_cohort_baseline, utils,
+                                                                    'baseline')[0].index
+    
+    df_allyears_summary.loc['Number of subject'] = [82, len(df_cohort_baseline), 53, len(df_cohort_1y), 
+                                          45, len(df_cohort_2y), 33, len(df_cohort_4y)]
+    
+    df_allyears_summary.columns = pd.MultiIndex.from_tuples(df_allyears_summary.columns)
+    
+    return df_allyears_summary
 
-    df_baseline = df_baseline[df_baseline[COL_PAT_ID].isin(participants_list)]
-    df_features = df_baseline[['PATNO', 'EVENT_ID','MCATOT', 'GDS_TOTAL', 'UPDRS_TOT']]
-    
-    # Necessary columns for demographic file
-    cols_demo = ['PATNO', 'SEX', 'RAWHITE', 'HISPLAT', 'RAINDALS','RABLACK', 'RAASIAN', 
-                 'RAHAWOPI', 'RANOS','HANDED']
-    
-    df_features = df_features.merge(
-        df_demographics[cols_demo],
-        on=[COL_PAT_ID],
-    )
-
-    # Encode HANDED column
-    df_features['HANDED_RIGHT'] = df_features['HANDED'].apply(lambda x: x == 1)
-    df_features['HANDED_LEFT'] = df_features['HANDED'].apply(lambda x: x == 2)
-    df_features['HANDED_BOTH'] = df_features['HANDED'].apply(lambda x: x == 3)
-    df_features = df_features.drop(['HANDED'], axis=1)
-
-    # Necessary columns for PD file
-    cols_PD = ['PATNO','INFODT','SXDT', 'PDDXDT', 'DXTREMOR', 'DXRIGID', 
-               'DXBRADY', 'DXPOSINS']
-    
-    df_features = df_features.merge(
-        df_pd_history[cols_PD],
-        on=[COL_PAT_ID],
-    )
-
-    if add_DOMSIDE: # Archived feature, only use if mentioned 
-        df_domside = load_ppmi_csv(utils, FILENAME_DOMSIDE)
-        cols_DOMSIDE = ['PATNO', 'DOMSIDE']
-        df_features = df_features.merge(
-            df_domside[cols_DOMSIDE],
-            on=[COL_PAT_ID],
-        )
-        # Encode DOMSIDE column
-        df_features['DOMSIDE_LEFT'] = df_features['DOMSIDE'].apply(lambda x: (x==1) if not pd.isnull(x) else np.nan)
-        df_features['DOMSIDE_RIGHT'] = df_features['DOMSIDE'].apply(lambda x: (x == 2) if not pd.isnull(x) else np.nan)
-        df_features['DOMSIDE_BOTH'] = df_features['DOMSIDE'].apply(lambda x: (x == 3) if not pd.isnull(x) else np.nan)
-        df_features = df_features.drop(['DOMSIDE'], axis=1)
-    
-    # Necessary columns for social file 
-    cols_socio = ['PATNO','EDUCYRS']
-    
-    df_features = df_features.merge(
-        df_socio[cols_socio].drop_duplicates(subset=[COL_PAT_ID]),
-        on=[COL_PAT_ID],
-    )
-
-    # Necessary columns for age file
-    df_features = df_features.merge(df_age, on=[COL_PAT_ID, COL_VISIT_TYPE])
-    df_features = df_features.drop_duplicates(subset=[COL_PAT_ID])
-    
-    df_features['INFODT'] = pd.to_datetime(df_features['INFODT'], format='%m-%y')
-    df_features['PDDXDT'] = pd.to_datetime(df_features['PDDXDT'], format='%m-%y')
-    
-    # Manage dates with SXDT columns (M/Y to M-Y)
-    list_symptom_date = []
-    for i, row in df_features.iterrows():
-        date = row['SXDT']
-        m = int(date.split('/')[0])
-        y = int(date.split('/')[1])
-        list_symptom_date += [dt.datetime.strptime('{:02d}-{}'.format(int(m), int(y)), '%m-%Y')]
-    
-    df_features['SXDT'] = list_symptom_date
-    
-    # Days bw diagnosis and visit
-    df_features['V-DXDT'] = (
-            df_features[COL_DATE_INFO] - df_features[COL_DATE_PD]) / np.timedelta64(1, 'D')
-    
-    # Days bw symptoms and visit
-    df_features['V-SXDT'] = (
-            df_features[COL_DATE_INFO] - df_features['SXDT']) / np.timedelta64(1, 'D')
-    
-    df_features = df_features.drop(['INFODT', 'SXDT', 'PDDXDT'],axis=1)
-    
-    if timepoint == 'baseline':
-        df_features = df_features.drop(['UPDRS_TOT'], axis=1) # only included for prediction
-        
-    df_features = df_features.set_index('PATNO')
-    
-    df_features = impute_mean(df_features, 'MCATOT', True)
-    df_features = impute_mean(df_features, 'GDS_TOTAL', True)
-    
-    return df_features
-
-def get_threshold(
-    df_cohort_baseline:pd.DataFrame, 
-    df_cohort_1y:pd.DataFrame,
-    df_cohort_2y:pd.DataFrame, 
-    df_cohort_4y:pd.DataFrame
-) -> int:
-    """Compute threshold to define high and low-severity groups.
-
-    Parameters
-    ----------
-    df_cohort_baseline : pd.DataFrame
-        input dataframe with baseline values
-    df_cohort_1y : pd.DataFrame
-        input dataframe with 1y values
-    df_cohort_2y : pd.DataFrame
-        input dataframe with 2y values
-    df_cohort_4y : pd.DataFrame
-        input dataframe with 4y values
-
-    Returns
-    -------
-    int
-        threshold representing the mean value of all UPDRS score across years and participants.
-    """
-    df_longitudinal_scores = df_cohort_baseline[['PATNO', 'EVENT_ID', 'NP3TOT' ,'UPDRS_TOT']].copy()
-    for i, df_pred in enumerate([df_cohort_1y, df_cohort_2y, df_cohort_4y]):
-        if i < 2: 
-            y = i+1
-        else:
-            y = 4
-        df_longitudinal_scores[f'UPDRS_TOT_{y}Y'] = [df_pred['UPDRS_TOT'][df_pred['PATNO']==sub_id].tolist()[0] \
-                                             if sub_id in df_pred['PATNO'].tolist() else np.nan \
-                                              for sub_id in df_cohort_baseline['PATNO'].tolist()]
-    
-        df_longitudinal_scores[f'NP3TOT_{y}Y'] = [df_pred['NP3TOT'][df_pred['PATNO']==sub_id].tolist()[0] \
-                                              if sub_id in df_pred['PATNO'].tolist() else np.nan \
-                                              for sub_id in df_cohort_baseline['PATNO'].tolist()]
-
-    threshold = int(df_longitudinal_scores[['UPDRS_TOT', 'UPDRS_TOT_1Y', 'UPDRS_TOT_2Y', 'UPDRS_TOT_4Y']].median().mean())
-    
-    return threshold
-
-def get_outcome_measures(
-    df:pd.DataFrame, 
-    threshold:int
-) -> pd.DataFrame:
-
-    """Gather target score for the machine learning models
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        input dataframe with features
-    threshold : int
-        threshold to define high and low-severity groups.
-
-    Returns
-    -------
-    pd.DataFrame
-        dataframe with outcome measures.
-    """
-    df_outcome = df[['PATNO', 'EVENT_ID', 'NP3TOT' ,'UPDRS_TOT']].copy()
-    df_outcome['SEVERITY'] = [1 if df_outcome['UPDRS_TOT'].iloc[i] > threshold else 0 for i in range(len(df_outcome))]
-    
-    return df_outcome

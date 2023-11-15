@@ -1,0 +1,33 @@
+,MDS-UPDRS Prediction target,Feature,Type,Best performing model,Best performing parcellation,R2,RMSE,AUC,PPV,NPV,Spec.,Sens.
+1,Baseline,fALFF,Original,Gradient Boosting,Schaefer,0.242,14.006,0.668,60.0%,74.0%,75.5%,58.1%
+0,Baseline,fALFF,Default,Gradient Boosting,BASC197,0.205,14.26,0.584,51.7%,66.0%,71.4%,45.5%
+0,Baseline,fALFF,Workflow E.1,Gradient Boosting,BASC197,0.049,15.6,0.514,42.3%,60.7%,69.4%,33.3%
+0,Baseline,fALFF,Workflow E.2,Gradient Boosting,Schaefer,-0.039,16.31,0.493,39.4%,59.2%,59.2%,39.4%
+0,Baseline,ReHo,Original,Gradient Boosting,Schaefer,0.304,13.415,0.674,59.4%,75.0%,73.5%,61.3%
+0,Baseline,ReHo,Default,ElasticNet,Schaefer,0.124,14.98,0.716,63.9%,78.3%,73.5%,69.7%
+0,Baseline,ReHo,Workflow E.1,Random Forest,BASC444,-0.164,17.26,0.528,43.8%,62.0%,63.3%,42.4%
+0,Baseline,ReHo,Workflow E.2,Gradient Boosting,Schaefer,-0.102,16.8,0.493,39.3%,59.3%,65.3%,33.3%
+3,Year 1,fALFF,Original,ElasticNet,Schaefer,0.558,14.256,0.753,70.4%,80.0%,71.4%,79.2%
+0,Year 1,fALFF,Default,ElasticNet,BASC197,0.717,11.6,0.805,75.9%,86.4%,73.1%,88.0%
+0,Year 1,fALFF,Workflow E.1,ElasticNet,BASC197,0.569,14.3,0.786,73.3%,85.7%,69.2%,88.0%
+0,Year 1,fALFF,Workflow E.2,ElasticNet,Schaefer,0.453,16.11,0.69,62.9%,81.2%,50.0%,88.0%
+2,Year 1,ReHo,Original,ElasticNet,Schaefer,0.453,15.861,0.753,70.4%,80.0%,71.4%,79.2%
+0,Year 1,ReHo,Default,ElasticNet,Schaefer,0.535,14.85,0.767,71.0%,85.0%,65.4%,88.0%
+0,Year 1,ReHo,Workflow E.1,ElasticNet,BASC444,0.483,15.67,0.726,70.4%,75.0%,69.2%,76.0%
+0,Year 1,ReHo,Workflow E.2,ElasticNet,Schaefer,0.535,14.85,0.767,71.0%,85.0%,65.4%,88.0%
+5,Year 2,fALFF,Original,ElasticNet,Schaefer,0.463,13.426,0.765,78.6%,76.5%,68.4%,84.6%
+0,Year 2,fALFF,Default,ElasticNet,Schaefer,0.529,12.68,0.669,69.2%,66.7%,55.6%,78.3%
+0,Year 2,fALFF,Workflow E.1,ElasticNet,Schaefer,0.478,13.35,0.669,69.2%,66.7%,55.6%,78.3%
+0,Year 2,fALFF,Workflow E.2,ElasticNet,Schaefer,0.529,12.68,0.669,69.2%,66.7%,55.6%,78.3%
+4,Year 2,ReHo,Original,ElasticNet,Schaefer,0.471,13.322,0.739,75.9%,75.0%,63.2%,84.6%
+0,Year 2,ReHo,Default,ElasticNet,Schaefer,0.344,14.95,0.635,65.5%,66.7%,44.4%,82.6%
+0,Year 2,ReHo,Workflow E.1,ElasticNet,Schaefer,0.272,15.76,0.607,63.3%,63.6%,38.9%,82.6%
+0,Year 2,ReHo,Workflow E.2,ElasticNet,Schaefer,0.344,14.95,0.635,65.5%,66.7%,44.4%,82.6%
+7,Year 4,fALFF,Original,SVM,BASC197,0.152,14.957,0.636,64.7%,62.5%,62.5%,64.7%
+0,Year 4,fALFF,Default,Gradient Boosting,BASC197,0.411,12.19,0.833,91.7%,77.8%,93.3%,73.3%
+0,Year 4,fALFF,Workflow E.1,ElasticNet,Schaefer,0.242,13.83,0.733,73.3%,73.3%,73.3%,73.3%
+0,Year 4,fALFF,Workflow E.2,SVM,BASC197,-0.134,16.92,0.633,66.7%,61.1%,73.3%,53.3%
+6,Year 4,ReHo,Original,SVM,BASC197,0.255,14.015,0.699,73.3%,66.7%,75.0%,64.7%
+0,Year 4,ReHo,Default,Gradient Boosting,BASC197,0.312,13.18,0.667,72.7%,63.2%,80.0%,53.3%
+0,Year 4,ReHo,Workflow E.1,Gradient Boosting,BASC197,-0.044,16.23,0.567,60.0%,55.0%,73.3%,40.0%
+0,Year 4,ReHo,Workflow E.2,SVM,BASC197,-0.23,17.62,0.6,63.6%,57.9%,73.3%,46.7%
