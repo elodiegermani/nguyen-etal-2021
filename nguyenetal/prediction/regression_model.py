@@ -267,28 +267,25 @@ class RegressorPanel:
             select_param_dict = {selector_name + '__' + key: val for key, val in select_orig_param_dict.items()}
             param_dict = dict(param_dict, **select_param_dict)
 
-        score_dict = {'rmse': metrics.make_scorer(rmse,
-                                                   greater_is_better=False),
-                       'rsquare': metrics.make_scorer(rsquare,
-                                                      greater_is_better=True)}
+        model = self.model_dict[model_name][0]
 
-        random = model_selection.RandomizedSearchCV(pipe, param_dict,
-                                                    scoring=score_dict,
-                                                    cv=self.inner,
-                                                    n_iter=n_iters,
-                                                    return_train_score=True,
-                                                    n_jobs=n_jobs,
-                                                    random_state=self.random_seed,
-                                                    refit=self.metric_rs)
+        permuted_r2 = []
+        
+        for i in range(n_iters):
+            # Shuffle the dataset here so that the target species/labels are `randomly` assigned to the samples.
+            np.random.shuffle(self.target)
+            
+            # When we obtain train and test splits, the assignments are random.
+            X_train, X_test, y_train, y_test = model_selection.train_test_split(self.data, self.target, 
+                test_size=0.2, random_state=432)
 
-        score, perm_scores, pvalue = model_selection.permutation_test_score(
-                                            random, X=self.data, y=self.target, cv=self.outer,
-                                          groups=None, n_jobs=n_jobs,
-                                          scoring='neg_root_mean_squared_error', n_permutations=1000
-                                        )
+            model.fit(X_train, y_train)
 
+            preds = model.predict(X_test)
 
-        return score, perm_scores, pvalue
+            permuted_r2.append(rsquare(preds, y_test))
+
+        return permuted_r2
 
     def run_all_models(self, n_iters=100, verbose=True, n_jobs=1):
         """
