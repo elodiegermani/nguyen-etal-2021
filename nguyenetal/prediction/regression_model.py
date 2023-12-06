@@ -252,9 +252,9 @@ class RegressorPanel:
 
         pipe = copy.deepcopy(self.preprocessing)
 
-        if self.feature_selection is not None: # If feature selection ? 
-            selector_name = self.feature_selection[0].__class__.__name__
-            pipe.steps.append((selector_name, self.feature_selection[0]))
+        # if self.feature_selection is not None: # If feature selection ? 
+        #     selector_name = self.feature_selection[0].__class__.__name__
+        #     pipe.steps.append((selector_name, self.feature_selection[0]))
 
         pipe.steps.append((model_name, self.model_dict[model_name][0]))
 
@@ -267,25 +267,30 @@ class RegressorPanel:
             select_param_dict = {selector_name + '__' + key: val for key, val in select_orig_param_dict.items()}
             param_dict = dict(param_dict, **select_param_dict)
 
+        score_dict = {'rsquare': metrics.make_scorer(rsquare,
+                                                      greater_is_better=True)}
+
         model = self.model_dict[model_name][0]
 
-        permuted_r2 = []
-        
-        for i in range(n_iters):
-            # Shuffle the dataset here so that the target species/labels are `randomly` assigned to the samples.
-            np.random.shuffle(self.target)
-            
-            # When we obtain train and test splits, the assignments are random.
-            X_train, X_test, y_train, y_test = model_selection.train_test_split(self.data, self.target, 
-                test_size=0.2, random_state=432)
+        cv_3fold = cross_validation.StratifiedKFoldContinuous(n_splits=3, n_bins=3, 
+                                                           shuffle=True, 
+                                                           random_state=self.random_seed)  
 
-            model.fit(X_train, y_train)
+        random = model_selection.RandomizedSearchCV(pipe, param_dict,
+                                                    scoring=metrics.make_scorer(rsquare,
+                                                    greater_is_better=True),
+                                                    cv=cv_3fold,
+                                                    n_iter=100,
+                                                    n_jobs=n_jobs,
+                                                    random_state=self.random_seed)
 
-            preds = model.predict(X_test)
+        score, perm_scores, pvalue = model_selection.permutation_test_score(
+            random, self.data, self.target, 
+            scoring=metrics.make_scorer(rsquare, greater_is_better=True), 
+            cv=cv_3fold, n_permutations=n_iters
+        )
 
-            permuted_r2.append(rsquare(preds, y_test))
-
-        return permuted_r2
+        return score, perm_scores, pvalue
 
     def run_all_models(self, n_iters=100, verbose=True, n_jobs=1):
         """

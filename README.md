@@ -1,6 +1,10 @@
 # nguyen-etal-2021
 Notebook for the reproduction of: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8127393/#SD1. 
 
+## Install dependencies
+
+`pip install -r requirements.txt`
+
 
 ## Dockerfile 
 
@@ -27,3 +31,4 @@ neurodocker generate docker \
 --run 'mkdir -p ~/.jupyter && echo c.NotebookApp.ip = \"0.0.0.0\" > ~/.jupyter/jupyter_notebook_config.py' > Dockerfile 
 
 ```
+
